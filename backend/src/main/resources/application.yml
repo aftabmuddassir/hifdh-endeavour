@@ -49,3 +49,17 @@ logging:
     com.hifdh: ${LOG_LEVEL:INFO}
     org.springframework.web: WARN
     org.hibernate: WARN
+
+# SpringDoc OpenAPI / Swagger Configuration
+springdoc:
+  api-docs:
+    path: /api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    tags-sorter: alpha
+    operations-sorter: alpha
+    display-request-duration: true
+    doc-expansion: none
+  show-actuator: false

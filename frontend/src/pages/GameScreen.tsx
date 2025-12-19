@@ -3,14 +3,13 @@ import { useParams } from 'react-router-dom';
 import { apiService } from '../services/api.service';
 import { wsService } from '../services/websocket.service';
 import type { GameSession } from '../types/game';
-import { Link, Copy, Check, Zap, Users, BookOpen, Trophy, Play, Crown } from 'lucide-react';
+import { Zap, Users, BookOpen, Trophy, Crown } from 'lucide-react';
 
-export default function AdminPage() {
+export default function GameScreen() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const [gameSession, setGameSession] = useState<GameSession | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (sessionId) {
@@ -21,7 +20,7 @@ export default function AdminPage() {
       let unsubscribe: (() => void) | undefined;
 
       wsService.subscribeToGameSession(sessionId, (updatedSession) => {
-        console.log('📥 Admin received update via WebSocket');
+        console.log('📥 Player received update via WebSocket');
         setGameSession(updatedSession);
         setLoading(false);
       }).then(unsub => {
@@ -56,37 +55,13 @@ export default function AdminPage() {
     }
   };
 
-  const handleStartGame = async () => {
-    if (!sessionId) return;
-
-    try {
-      const updated = await apiService.startGame(sessionId);
-      setGameSession(updated);
-    } catch (err: any) {
-      setError(err.message || 'Failed to start game');
-    }
-  };
-
-  const handleCopyJoinLink = async () => {
-    if (!sessionId) return;
-
-    const joinUrl = `${window.location.origin}/join/${sessionId}`;
-
-    try {
-      await navigator.clipboard.writeText(joinUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error('Failed to copy:', err);
-    }
-  };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-4 border-cyan-500 border-t-transparent mx-auto mb-4"></div>
-          <p className="text-cyan-300 text-xl font-semibold">Loading admin panel...</p>
+          <p className="text-cyan-300 text-xl font-semibold">Loading game session...</p>
         </div>
       </div>
     );
@@ -113,18 +88,12 @@ export default function AdminPage() {
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 py-8 px-4">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl shadow-2xl p-6 mb-6 border-2 border-yellow-500/50">
-          <div className="flex items-center gap-3 mb-4">
-            <Crown className="w-8 h-8 text-yellow-400" />
-            <h1 className="text-3xl font-bold text-transparent bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text">
-              🎮 ADMIN CONTROL PANEL
-            </h1>
-          </div>
+        <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl shadow-2xl p-6 mb-6 border-2 border-purple-500/30">
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
-              <h2 className="text-2xl font-bold bg-gradient-to-r from-green-400 via-blue-500 to-purple-600 bg-clip-text text-transparent">
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-green-400 via-blue-500 to-purple-600 bg-clip-text text-transparent">
                 ⚡ Hifdh Quest ⚡
-              </h2>
+              </h1>
               <p className="text-cyan-300 mt-2 text-sm font-medium">
                 Session: <span className="font-mono text-cyan-400">{gameSession.id.substring(0, 8)}...</span>
               </p>
@@ -146,37 +115,6 @@ export default function AdminPage() {
               </div>
             </div>
           </div>
-
-          {/* Share Link Section (only in setup) */}
-          {gameSession.status === 'setup' && (
-            <div className="mt-4 pt-4 border-t border-purple-500/30">
-              <div className="flex items-center gap-3 flex-wrap">
-                <div className="flex items-center gap-2 text-cyan-300">
-                  <Link className="w-5 h-5 text-green-400" />
-                  <span className="font-bold">Share with players:</span>
-                </div>
-                <button
-                  onClick={handleCopyJoinLink}
-                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-lg transition-all transform hover:scale-105 font-bold shadow-lg shadow-green-500/30"
-                >
-                  {copied ? (
-                    <>
-                      <Check className="w-4 h-4" />
-                      <span>Copied!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-4 h-4" />
-                      <span>Copy Join Link</span>
-                    </>
-                  )}
-                </button>
-              </div>
-              <p className="text-sm text-gray-400 mt-3">
-                Join URL: <code className="bg-gray-700/50 px-2 py-1 rounded text-xs text-cyan-400 border border-gray-600">{window.location.origin}/join/{sessionId}</code>
-              </p>
-            </div>
-          )}
         </div>
 
         {/* Game Info */}
@@ -289,28 +227,19 @@ export default function AdminPage() {
           )}
         </div>
 
-        {/* Start Game Button (only in setup status) */}
+        {/* Waiting for Game to Start */}
         {gameSession.status === 'setup' && (
           <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl shadow-2xl p-8 text-center border-2 border-purple-500/30">
-            <div className="mb-6">
-              <div className="inline-block p-4 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 mb-4">
-                <Play className="w-12 h-12 text-white" />
-              </div>
-              <p className="text-cyan-300 text-xl mb-2 font-semibold">Ready to start?</p>
-              <p className="text-gray-400">
-                {gameSession.participants.length === 0
-                  ? '⚠️ Waiting for at least 1 player to join...'
-                  : `✅ ${gameSession.participants.length} player${gameSession.participants.length > 1 ? 's' : ''} ready!`
-                }
-              </p>
+            <div className="inline-block p-4 rounded-full bg-gradient-to-br from-yellow-500 to-orange-500 mb-4">
+              <Users className="w-12 h-12 text-white" />
             </div>
-            <button
-              onClick={handleStartGame}
-              disabled={gameSession.participants.length === 0}
-              className="px-12 py-5 bg-gradient-to-r from-green-500 via-emerald-500 to-cyan-500 text-white font-bold text-2xl rounded-xl hover:from-green-600 hover:via-emerald-600 hover:to-cyan-600 transition-all transform hover:scale-105 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed disabled:transform-none shadow-2xl shadow-green-500/50 hover:shadow-green-400/60"
-            >
-              🚀 START GAME 🚀
-            </button>
+            <p className="text-cyan-300 text-2xl font-bold mb-2">⏳ Waiting for Host</p>
+            <p className="text-gray-400 text-lg">
+              The game will start soon...
+            </p>
+            <p className="text-gray-500 text-sm mt-4">
+              {gameSession.participants.length} player{gameSession.participants.length > 1 ? 's' : ''} in the lobby
+            </p>
           </div>
         )}
 
@@ -327,7 +256,7 @@ export default function AdminPage() {
               Game controls and buzzer system will appear here.
             </p>
             <p className="text-gray-400 text-sm mt-2">
-              Coming soon: Round management, question controls, and scoring!
+              Coming soon: Real-time questions, audio playback, and buzzer controls!
             </p>
           </div>
         )}

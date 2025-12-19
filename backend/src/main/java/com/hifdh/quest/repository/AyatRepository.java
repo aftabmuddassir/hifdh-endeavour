@@ -11,12 +11,24 @@ import java.util.Set;
 @Repository
 public interface AyatRepository extends JpaRepository<Ayat, Long> {
 
+    /**
+     * Find ayat by surah range, excluding used ayat IDs.
+     * Handles empty usedAyatIds set properly.
+     */
+    @Query("SELECT a FROM Ayat a WHERE a.surahNumber BETWEEN :surahStart AND :surahEnd " +
+           "AND (:#{#usedAyatIds.size()} = 0 OR a.id NOT IN :usedAyatIds)")
     List<Ayat> findBySurahNumberBetweenAndIdNotIn(
         Integer surahStart,
         Integer surahEnd,
         Set<Long> usedAyatIds
     );
 
+    /**
+     * Find ayat by juz number, excluding used ayat IDs.
+     * Handles empty usedAyatIds set properly.
+     */
+    @Query("SELECT a FROM Ayat a WHERE a.juzNumber = :juzNumber " +
+           "AND (:#{#usedAyatIds.size()} = 0 OR a.id NOT IN :usedAyatIds)")
     List<Ayat> findByJuzNumberAndIdNotIn(
         Integer juzNumber,
         Set<Long> usedAyatIds
