@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { apiService } from '../services/api.service';
 import { wsService } from '../services/websocket.service';
-import type { GameSession } from '../types/game';
-import { Link, Copy, Check, Zap, Users, BookOpen, Trophy, Play, Crown } from 'lucide-react';
+import type { GameSession, GameRound } from '../types/game';
+import { Link, Copy, Check, Zap, Users, BookOpen, Trophy, Play, Crown, Volume2, StopCircle, PlayCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function AdminPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -12,10 +12,24 @@ export default function AdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
+  // Round management state
+  const [currentRound, setCurrentRound] = useState<GameRound | null>(null);
+  const [isCreatingRound, setIsCreatingRound] = useState(false);
+  const [isEndingRound, setIsEndingRound] = useState(false);
+  const [showAnswer, setShowAnswer] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
+  const [viewingAyah, setViewingAyah] = useState<'previous' | 'current' | 'next'>('current');
+
+  // Audio player state
+  const [audioPlaying, setAudioPlaying] = useState(false);
+  const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
+  const [hasPlayedAudioOnce, setHasPlayedAudioOnce] = useState(false);
+
   useEffect(() => {
     if (sessionId) {
       // Load initial data
       loadGameSession();
+      loadCurrentRound();
 
       // Subscribe to WebSocket updates
       let unsubscribe: (() => void) | undefined;
@@ -38,9 +52,30 @@ export default function AdminPage() {
         if (unsubscribe) {
           unsubscribe();
         }
+        // Clean up audio
+        if (audioElement) {
+          audioElement.pause();
+          audioElement.src = '';
+        }
       };
     }
   }, [sessionId]);
+
+  // Timer countdown effect
+  useEffect(() => {
+    if (timeRemaining === null || timeRemaining <= 0) return;
+
+    const timer = setInterval(() => {
+      setTimeRemaining((prev) => {
+        if (prev === null || prev <= 1) {
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [timeRemaining]);
 
   const loadGameSession = async () => {
     if (!sessionId) return;
@@ -56,6 +91,17 @@ export default function AdminPage() {
     }
   };
 
+  const loadCurrentRound = async () => {
+    if (!sessionId) return;
+
+    try {
+      const round = await apiService.getCurrentRound(sessionId);
+      setCurrentRound(round);
+    } catch (err) {
+      console.error('Error loading current round:', err);
+    }
+  };
+
   const handleStartGame = async () => {
     if (!sessionId) return;
 
@@ -65,6 +111,86 @@ export default function AdminPage() {
     } catch (err: any) {
       setError(err.message || 'Failed to start game');
     }
+  };
+
+  const handleCreateRound = async () => {
+    if (!sessionId || !gameSession) return;
+
+    setIsCreatingRound(true);
+    try {
+      const reciterId = gameSession.participants.length > 0 ? 1 : undefined; // Use default reciter
+      // Question type is auto-selected by backend based on game configuration
+      const round = await apiService.createRound(sessionId, undefined, reciterId);
+      setCurrentRound(round);
+      setShowAnswer(false); // Hide answer for new round
+      setHasPlayedAudioOnce(false); // Reset audio play tracking
+      setTimeRemaining(null); // Timer will start when audio is played
+      setViewingAyah('current'); // Reset to current ayah view
+
+      // Initialize audio
+      if (round.audioUrl) {
+        const audio = new Audio(round.audioUrl);
+        audio.onended = () => setAudioPlaying(false);
+        setAudioElement(audio);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to create round');
+      console.error('Error creating round:', err);
+    } finally {
+      setIsCreatingRound(false);
+    }
+  };
+
+  const handleEndRound = async () => {
+    if (!currentRound) return;
+
+    setIsEndingRound(true);
+    try {
+      await apiService.endRound(currentRound.id);
+      setCurrentRound(null);
+      setTimeRemaining(null); // Reset timer
+      setShowAnswer(false); // Reset answer visibility
+      setHasPlayedAudioOnce(false); // Reset audio play tracking
+
+      // Stop and clean up audio
+      if (audioElement) {
+        audioElement.pause();
+        audioElement.src = '';
+        setAudioElement(null);
+        setAudioPlaying(false);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to end round');
+      console.error('Error ending round:', err);
+    } finally {
+      setIsEndingRound(false);
+    }
+  };
+
+  const toggleAudio = () => {
+    if (!audioElement || !gameSession) return;
+
+    if (audioPlaying) {
+      audioElement.pause();
+      setAudioPlaying(false);
+    } else {
+      audioElement.play();
+      setAudioPlaying(true);
+
+      // Start timer on first play only
+      if (!hasPlayedAudioOnce) {
+        setTimeRemaining(gameSession.timerSeconds);
+        setHasPlayedAudioOnce(true);
+      }
+    }
+  };
+
+  const stopAudio = () => {
+    if (!audioElement) return;
+
+    audioElement.pause();
+    audioElement.currentTime = 0;
+    setAudioPlaying(false);
   };
 
   const handleCopyJoinLink = async () => {
@@ -314,21 +440,380 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* Game Active State (placeholder) */}
-        {gameSession.status === 'active' && (
-          <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl shadow-2xl p-8 text-center border-2 border-green-500/50 animate-pulse">
-            <div className="inline-block p-4 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 mb-4">
-              <Zap className="w-12 h-12 text-white" />
-            </div>
-            <h2 className="text-3xl font-bold text-transparent bg-gradient-to-r from-green-400 to-emerald-500 bg-clip-text mb-4">
-              🎮 GAME IS LIVE! 🎮
+        {/* Game Active State - Admin Controls */}
+        {gameSession.status === 'active' && !currentRound && (
+          <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl shadow-2xl p-8 border-2 border-green-500/50">
+            <h2 className="text-3xl font-bold text-transparent bg-gradient-to-r from-green-400 to-emerald-500 bg-clip-text mb-6 text-center">
+              🎮 START NEW ROUND 🎮
             </h2>
-            <p className="text-cyan-300 text-lg">
-              Game controls and buzzer system will appear here.
-            </p>
-            <p className="text-gray-400 text-sm mt-2">
-              Coming soon: Round management, question controls, and scoring!
-            </p>
+
+            {/* Enabled Question Types */}
+            <div className="mb-8">
+              <label className="block text-lg font-bold text-transparent bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text mb-4">
+                ❓ ENABLED QUESTION TYPES
+              </label>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                {gameSession.selectedQuestionTypes?.map((qt) => {
+                  const config = {
+                    guess_surah: { emoji: '📖', label: 'Surah', points: 10 },
+                    guess_meaning: { emoji: '💭', label: 'Meaning', points: 15 },
+                    guess_next_ayat: { emoji: '➡️', label: 'Next Ayah', points: 20 },
+                    guess_previous_ayat: { emoji: '⬅️', label: 'Prev Ayah', points: 25 },
+                    guess_reciter: { emoji: '🎙️', label: 'Reciter', points: 15 },
+                  }[qt];
+                  return (
+                    <div
+                      key={qt}
+                      className="p-3 rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/50 text-center"
+                    >
+                      <div className="text-2xl mb-1">{config?.emoji}</div>
+                      <div className="text-sm font-bold text-white">{config?.label}</div>
+                      <div className="text-xs text-gray-400">{config?.points} pts</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Start Round Button */}
+            <div className="text-center">
+              <button
+                onClick={handleCreateRound}
+                disabled={isCreatingRound}
+                className="px-12 py-5 bg-gradient-to-r from-green-500 via-emerald-500 to-cyan-500 text-white font-bold text-2xl rounded-xl hover:from-green-600 hover:via-emerald-600 hover:to-cyan-600 transition-all transform hover:scale-105 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed disabled:transform-none shadow-2xl shadow-green-500/50 hover:shadow-green-400/60"
+              >
+                {isCreatingRound ? (
+                  <span className="flex items-center justify-center gap-3">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+                    Creating Round...
+                  </span>
+                ) : (
+                  '🚀 START ROUND 🚀'
+                )}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Active Round Display */}
+        {gameSession.status === 'active' && currentRound && (
+          <div className="space-y-6">
+            {/* Round Header with Timer */}
+            <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl shadow-2xl p-6 border-2 border-green-500/50">
+              <div className="flex items-center justify-between flex-wrap gap-4 mb-4">
+                <div>
+                  <h2 className="text-3xl font-bold text-transparent bg-gradient-to-r from-green-400 to-emerald-500 bg-clip-text">
+                    🎮 ROUND {currentRound.roundNumber} - LIVE!
+                  </h2>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm text-gray-400 mb-2">Question Type</div>
+                  <div className="text-xl font-bold text-purple-400 capitalize">
+                    {currentRound.currentQuestionType.replace(/_/g, ' ')}
+                  </div>
+                </div>
+              </div>
+
+              {/* Timer Display */}
+              {timeRemaining !== null && (
+                <div className="flex items-center justify-center gap-4 mb-4">
+                  <div className={`text-6xl font-bold ${
+                    timeRemaining <= 10
+                      ? 'text-red-500 animate-pulse'
+                      : timeRemaining <= 30
+                      ? 'text-yellow-400'
+                      : 'text-green-400'
+                  }`}>
+                    ⏱️ {timeRemaining}s
+                  </div>
+                </div>
+              )}
+
+              {/* Show Answer Button */}
+              <div className="flex justify-center">
+                <button
+                  onClick={() => setShowAnswer(!showAnswer)}
+                  className={`px-8 py-3 font-bold text-lg rounded-xl transition-all transform hover:scale-105 ${
+                    showAnswer
+                      ? 'bg-gradient-to-r from-red-500 to-pink-600 text-white hover:from-red-600 hover:to-pink-700'
+                      : 'bg-gradient-to-r from-blue-500 to-cyan-600 text-white hover:from-blue-600 hover:to-cyan-700'
+                  }`}
+                >
+                  {showAnswer ? '🙈 HIDE ANSWER' : '👀 SHOW ANSWER'}
+                </button>
+              </div>
+            </div>
+
+            {/* Audio Player */}
+            <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl shadow-2xl p-6 border-2 border-purple-500/30">
+              <div className="flex items-center gap-3 mb-4">
+                <Volume2 className="w-6 h-6 text-cyan-400" />
+                <h3 className="text-xl font-bold text-cyan-300">AUDIO PLAYER</h3>
+              </div>
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={toggleAudio}
+                  className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all transform hover:scale-105 flex items-center gap-2"
+                >
+                  {audioPlaying ? (
+                    <>
+                      <StopCircle className="w-5 h-5" />
+                      Pause
+                    </>
+                  ) : (
+                    <>
+                      <PlayCircle className="w-5 h-5" />
+                      Play Audio
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={stopAudio}
+                  disabled={!audioPlaying}
+                  className="px-6 py-3 bg-gray-700 text-white font-bold rounded-lg hover:bg-gray-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Stop
+                </button>
+                {audioPlaying && (
+                  <div className="flex items-center gap-2 text-green-400 animate-pulse">
+                    <div className="w-2 h-2 bg-green-400 rounded-full animate-ping"></div>
+                    <span className="font-semibold">Playing...</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Ayah Display - Only shown when answer is revealed */}
+            {showAnswer && (() => {
+              const isNavQuestion = currentRound.currentQuestionType === 'guess_next_ayat' ||
+                                     currentRound.currentQuestionType === 'guess_previous_ayat';
+              const showNavigation = isNavQuestion;
+
+              // Get current viewing data
+              let displayAyatNumber = currentRound.ayatNumber;
+              let displayArabicText = currentRound.arabicText;
+              let displayTranslation = currentRound.translation;
+              let displayLabel = 'CURRENT AYAH';
+
+              if (viewingAyah === 'previous' && currentRound.previousAyatNumber) {
+                displayAyatNumber = currentRound.previousAyatNumber;
+                displayArabicText = currentRound.previousArabicText!;
+                displayTranslation = currentRound.previousTranslation!;
+                displayLabel = 'PREVIOUS AYAH';
+              } else if (viewingAyah === 'next' && currentRound.nextAyatNumber) {
+                displayAyatNumber = currentRound.nextAyatNumber;
+                displayArabicText = currentRound.nextArabicText!;
+                displayTranslation = currentRound.nextTranslation!;
+                displayLabel = 'NEXT AYAH';
+              }
+
+              // For guess_next_ayat: disable previous arrow (answer IS the next ayah)
+              // For guess_previous_ayat: disable next arrow (answer IS the previous ayah)
+              const canGoPrevious = currentRound.previousAyatNumber != null &&
+                                     currentRound.currentQuestionType !== 'guess_next_ayat';
+              const canGoNext = currentRound.nextAyatNumber != null &&
+                                 currentRound.currentQuestionType !== 'guess_previous_ayat';
+
+              // Special rendering for guess_surah - highlight surah name as THE answer
+              if (currentRound.currentQuestionType === 'guess_surah') {
+                return (
+                  <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl shadow-2xl p-8 border-2 border-yellow-500/50">
+                    {/* Header */}
+                    <div className="flex items-center justify-center mb-8">
+                      <BookOpen className="w-8 h-8 text-yellow-400 mr-3" />
+                      <h3 className="text-3xl font-bold text-yellow-300">THE ANSWER</h3>
+                    </div>
+
+                    {/* SURAH NAME - Prominently displayed as THE answer */}
+                    <div className="bg-gradient-to-br from-yellow-600/20 to-orange-600/20 rounded-2xl p-12 mb-8 border-4 border-yellow-500/50 shadow-2xl">
+                      <div className="text-center space-y-4">
+                        <div className="text-yellow-400 text-sm font-semibold tracking-widest uppercase mb-2">
+                          Surah Name
+                        </div>
+                        <div className="text-6xl font-bold text-yellow-100 mb-4 drop-shadow-lg">
+                          {currentRound.surahNameEnglish}
+                        </div>
+                        <div className="text-5xl text-yellow-200 font-arabic mb-4">
+                          {currentRound.surahNameArabic}
+                        </div>
+                        <div className="text-2xl text-yellow-300/80 font-semibold">
+                          Surah #{currentRound.surahNumber}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Secondary Information - Ayah context */}
+                    <div className="space-y-4">
+                      <div className="text-center text-gray-400 text-sm font-semibold mb-2">
+                        From Ayah {currentRound.ayatNumber}:
+                      </div>
+
+                      {/* Arabic Text - Secondary */}
+                      <div className="bg-gradient-to-br from-indigo-900/20 to-purple-900/20 rounded-xl p-6 border border-purple-500/20">
+                        <p className="text-xl text-right text-gray-300 leading-relaxed font-arabic">
+                          {displayArabicText}
+                        </p>
+                      </div>
+
+                      {/* English Translation - Secondary */}
+                      <div className="bg-gradient-to-br from-blue-900/20 to-cyan-900/20 rounded-xl p-4 border border-cyan-500/20">
+                        <p className="text-base text-gray-400 leading-relaxed">
+                          {displayTranslation}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              // Special rendering for guess_meaning - highlight translation as THE answer
+              if (currentRound.currentQuestionType === 'guess_meaning') {
+                return (
+                  <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl shadow-2xl p-8 border-2 border-purple-500/50">
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center gap-3">
+                        <BookOpen className="w-7 h-7 text-purple-400" />
+                        <h3 className="text-2xl font-bold text-purple-300">THE ANSWER</h3>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-cyan-300 text-lg font-semibold">
+                          Surah {currentRound.surahNameEnglish}
+                        </div>
+                        <div className="text-purple-300 text-sm">
+                          ({currentRound.surahNumber}:{displayAyatNumber})
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Arabic Text - Context */}
+                    <div className="bg-gradient-to-br from-indigo-900/20 to-purple-900/20 rounded-xl p-6 mb-6 border border-purple-500/20">
+                      <p className="text-2xl text-right text-gray-300 leading-relaxed font-arabic">
+                        {displayArabicText}
+                      </p>
+                    </div>
+
+                    {/* MEANING/TRANSLATION - Prominently displayed as THE answer */}
+                    <div className="bg-gradient-to-br from-purple-600/20 to-pink-600/20 rounded-2xl p-10 border-4 border-purple-500/50 shadow-2xl">
+                      <div className="space-y-3">
+                        <div className="text-purple-400 text-sm font-semibold tracking-widest uppercase text-center mb-3">
+                          Meaning (Translation)
+                        </div>
+                        <p className="text-2xl text-purple-100 leading-relaxed font-semibold text-center">
+                          {displayTranslation}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              // Default rendering for navigation question types (guess_next_ayat, guess_previous_ayat)
+              return (
+                <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl shadow-2xl p-8 border-2 border-purple-500/30">
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                      <BookOpen className="w-7 h-7 text-purple-400" />
+                      <h3 className="text-2xl font-bold text-purple-300">ANSWER - {displayLabel}</h3>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-cyan-300 text-lg font-semibold">
+                        Surah {currentRound.surahNameEnglish}
+                      </div>
+                      <div className="text-purple-300 text-sm">
+                        ({currentRound.surahNumber}:{displayAyatNumber})
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Navigation Arrows - Only for guess_next_ayat and guess_previous_ayat */}
+                  {showNavigation && (
+                    <div className="flex justify-center gap-4 mb-6">
+                      <button
+                        onClick={() => setViewingAyah('previous')}
+                        disabled={!canGoPrevious}
+                        className={`p-3 rounded-lg transition-all ${
+                          canGoPrevious
+                            ? 'bg-gradient-to-r from-blue-500 to-cyan-600 text-white hover:from-blue-600 hover:to-cyan-700 cursor-pointer'
+                            : 'bg-gray-700 text-gray-500 cursor-not-allowed opacity-50'
+                        }`}
+                        title={
+                          canGoPrevious
+                            ? 'View Previous Ayah'
+                            : currentRound.currentQuestionType === 'guess_next_ayat'
+                            ? 'Navigation disabled (answer is next ayah)'
+                            : 'No previous ayah available'
+                        }
+                      >
+                        <ChevronLeft className="w-6 h-6" />
+                      </button>
+
+                      <button
+                        onClick={() => setViewingAyah('current')}
+                        className={`px-6 py-3 rounded-lg transition-all ${
+                          viewingAyah === 'current'
+                            ? 'bg-gradient-to-r from-purple-500 to-pink-600 text-white'
+                            : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                        }`}
+                      >
+                        Current Ayah
+                      </button>
+
+                      <button
+                        onClick={() => setViewingAyah('next')}
+                        disabled={!canGoNext}
+                        className={`p-3 rounded-lg transition-all ${
+                          canGoNext
+                            ? 'bg-gradient-to-r from-blue-500 to-cyan-600 text-white hover:from-blue-600 hover:to-cyan-700 cursor-pointer'
+                            : 'bg-gray-700 text-gray-500 cursor-not-allowed opacity-50'
+                        }`}
+                        title={
+                          canGoNext
+                            ? 'View Next Ayah'
+                            : currentRound.currentQuestionType === 'guess_previous_ayat'
+                            ? 'Navigation disabled (answer is previous ayah)'
+                            : 'No next ayah available'
+                        }
+                      >
+                        <ChevronRight className="w-6 h-6" />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Arabic Text */}
+                  <div className="bg-gradient-to-br from-indigo-900/30 to-purple-900/30 rounded-xl p-8 mb-6 border border-purple-500/30">
+                    <p className="text-3xl text-right text-white leading-relaxed font-arabic">
+                      {displayArabicText}
+                    </p>
+                  </div>
+
+                  {/* English Translation */}
+                  <div className="bg-gradient-to-br from-blue-900/30 to-cyan-900/30 rounded-xl p-6 border border-cyan-500/30">
+                    <p className="text-lg text-cyan-100 leading-relaxed">
+                      {displayTranslation}
+                    </p>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* End Round Button */}
+            <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl shadow-2xl p-6 text-center border-2 border-red-500/30">
+              <button
+                onClick={handleEndRound}
+                disabled={isEndingRound}
+                className="px-12 py-5 bg-gradient-to-r from-red-500 to-pink-600 text-white font-bold text-2xl rounded-xl hover:from-red-600 hover:to-pink-700 transition-all transform hover:scale-105 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed disabled:transform-none shadow-2xl shadow-red-500/50 hover:shadow-red-400/60"
+              >
+                {isEndingRound ? (
+                  <span className="flex items-center justify-center gap-3">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+                    Ending Round...
+                  </span>
+                ) : (
+                  '⏹️ END ROUND'
+                )}
+              </button>
+            </div>
           </div>
         )}
       </div>

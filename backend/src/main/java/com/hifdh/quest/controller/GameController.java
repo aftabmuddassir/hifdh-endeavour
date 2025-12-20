@@ -146,19 +146,21 @@ public class GameController {
     /**
      * Create a new round.
      * POST /api/game/{sessionId}/rounds
+     * questionType is optional - if not provided, backend auto-selects based on game configuration
      */
     @PostMapping("/{sessionId}/rounds")
     public ResponseEntity<GameRoundDTO> createRound(
             @PathVariable UUID sessionId,
-            @RequestBody Map<String, Object> body
+            @RequestBody(required = false) Map<String, Object> body
     ) {
         try {
-            String questionType = (String) body.get("questionType");
-            Long reciterId = body.get("reciterId") != null ?
-                Long.valueOf(body.get("reciterId").toString()) : null;
+            String questionType = null;
+            Long reciterId = null;
 
-            if (questionType == null || questionType.trim().isEmpty()) {
-                return ResponseEntity.badRequest().build();
+            if (body != null) {
+                questionType = (String) body.get("questionType");
+                reciterId = body.get("reciterId") != null ?
+                    Long.valueOf(body.get("reciterId").toString()) : null;
             }
 
             GameRoundDTO round = gameSessionService.createRound(sessionId, questionType, reciterId);

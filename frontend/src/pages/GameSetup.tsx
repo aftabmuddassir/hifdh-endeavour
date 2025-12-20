@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiService } from '../services/api.service';
-import type { CreateGameRequest, Difficulty, GameMode, Reciter } from '../types/game';
+import type { CreateGameRequest, Difficulty, GameMode, Reciter, QuestionType } from '../types/game';
 import { Zap, Users, User, BookOpen, Sparkles, Trophy } from 'lucide-react';
 
 export default function GameSetup() {
@@ -16,6 +16,7 @@ export default function GameSetup() {
   const [juzNumber, setJuzNumber] = useState(1);
   const [selectedReciterId, setSelectedReciterId] = useState<number | undefined>();
   const [scoreboardLimit, setScoreboardLimit] = useState(5);
+  const [selectedQuestionType, setSelectedQuestionType] = useState<QuestionType>('guess_meaning');
 
   // Data state
   const [reciters, setReciters] = useState<Reciter[]>([]);
@@ -48,6 +49,7 @@ export default function GameSetup() {
       gameMode,
       scoreboardLimit,
       reciterId: selectedReciterId,
+      selectedQuestionTypes: [selectedQuestionType], // Single question type as array
     };
 
     if (rangeType === 'surah') {
@@ -91,6 +93,39 @@ export default function GameSetup() {
       time: '30s',
       color: 'from-red-500 to-pink-600',
       icon: <Trophy className="w-6 h-6" />
+    },
+  };
+
+  const questionTypeConfig: Record<QuestionType, { label: string; points: number; emoji: string; color: string }> = {
+    guess_surah: {
+      label: 'Guess Surah',
+      points: 10,
+      emoji: '📖',
+      color: 'from-blue-500 to-cyan-600',
+    },
+    guess_meaning: {
+      label: 'Guess Meaning',
+      points: 15,
+      emoji: '💭',
+      color: 'from-purple-500 to-pink-600',
+    },
+    guess_next_ayat: {
+      label: 'Guess Next Ayah',
+      points: 20,
+      emoji: '➡️',
+      color: 'from-green-500 to-emerald-600',
+    },
+    guess_previous_ayat: {
+      label: 'Guess Previous Ayah',
+      points: 25,
+      emoji: '⬅️',
+      color: 'from-orange-500 to-red-600',
+    },
+    guess_reciter: {
+      label: 'Guess Reciter',
+      points: 15,
+      emoji: '🎙️',
+      color: 'from-indigo-500 to-purple-600',
     },
   };
 
@@ -186,6 +221,45 @@ export default function GameSetup() {
                     <div className="text-sm opacity-90">Collaborate Together</div>
                   </div>
                 </button>
+              </div>
+            </div>
+
+            {/* Question Type Selection */}
+            <div>
+              <label className="block text-lg font-bold text-transparent bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text mb-4">
+                ❓ QUESTION TYPE
+              </label>
+              <p className="text-sm text-gray-400 mb-4">Select ONE question type for this game</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {(['guess_surah', 'guess_meaning', 'guess_next_ayat', 'guess_previous_ayat'] as QuestionType[]).map(
+                  (questionType) => {
+                    const config = questionTypeConfig[questionType];
+                    const isSelected = selectedQuestionType === questionType;
+                    return (
+                      <button
+                        key={questionType}
+                        type="button"
+                        onClick={() => setSelectedQuestionType(questionType)}
+                        className={`p-6 rounded-xl border-2 transition-all transform hover:scale-105 ${
+                          isSelected
+                            ? `border-transparent bg-gradient-to-br ${config.color} text-white shadow-lg`
+                            : 'border-gray-600 bg-gray-700/50 text-gray-300 hover:border-gray-500'
+                        }`}
+                      >
+                        <div className="flex flex-col items-center gap-2">
+                          <span className="text-4xl">{config.emoji}</span>
+                          <div className="font-bold text-base">{config.label}</div>
+                          <div className="text-sm opacity-90">{config.points} points</div>
+                          {isSelected && (
+                            <div className="text-xs font-semibold bg-white/20 px-3 py-1 rounded-full">
+                              ✓ Selected
+                            </div>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  }
+                )}
               </div>
             </div>
 

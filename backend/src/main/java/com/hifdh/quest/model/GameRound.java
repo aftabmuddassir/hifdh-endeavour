@@ -28,6 +28,12 @@ public class GameRound {
     @Column(name = "surah_number")
     private Integer surahNumber;
 
+    @Column(name = "surah_name_arabic", length = 100)
+    private String surahNameArabic;
+
+    @Column(name = "surah_name_english", length = 100)
+    private String surahNameEnglish;
+
     @Column(name = "ayat_number")
     private Integer ayatNumber;
 
@@ -39,6 +45,26 @@ public class GameRound {
 
     @Column(name = "audio_url", length = 512)
     private String audioUrl;
+
+    // Previous ayah data (for navigation in guess_previous_ayat questions)
+    @Column(name = "previous_ayat_number")
+    private Integer previousAyatNumber;
+
+    @Column(name = "previous_arabic_text", columnDefinition = "TEXT")
+    private String previousArabicText;
+
+    @Column(name = "previous_translation", columnDefinition = "TEXT")
+    private String previousTranslation;
+
+    // Next ayah data (for navigation in guess_next_ayat questions)
+    @Column(name = "next_ayat_number")
+    private Integer nextAyatNumber;
+
+    @Column(name = "next_arabic_text", columnDefinition = "TEXT")
+    private String nextArabicText;
+
+    @Column(name = "next_translation", columnDefinition = "TEXT")
+    private String nextTranslation;
 
     @Column(name = "round_number")
     private Integer roundNumber;

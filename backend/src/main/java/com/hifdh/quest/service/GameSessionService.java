@@ -29,6 +29,7 @@ public class GameSessionService {
     private final GameParticipantRepository participantRepository;
     private final GameRoundRepository roundRepository;
     private final GameQuestionRepository questionRepository;
+    private final AyatRepository ayatRepository;
     private final AyatService ayatService;
     private final SimpMessagingTemplate messagingTemplate;
 
@@ -72,6 +73,14 @@ public class GameSessionService {
         session.setGameMode(request.getGameMode());
         session.setScoreboardLimit(request.getScoreboardLimit() != null ? request.getScoreboardLimit() : 5);
         session.setStatus("setup");
+
+        // Store selected question types (default to all if not specified)
+        if (request.getSelectedQuestionTypes() != null && !request.getSelectedQuestionTypes().isEmpty()) {
+            session.setSelectedQuestionTypes(String.join(",", request.getSelectedQuestionTypes()));
+        } else {
+            // Default: enable all question types
+            session.setSelectedQuestionTypes(String.join(",", QUESTION_POINTS.keySet()));
+        }
 
         // Save session first to get ID
         session = sessionRepository.save(session);
@@ -136,10 +145,11 @@ public class GameSessionService {
     }
 
     /**
-     * Create a new round with a random Ayat.
+     * Create a new round for a game session.
+     * Uses the single question type selected during game creation for all rounds.
      *
      * @param sessionId Game session ID
-     * @param questionType Question type for this round
+     * @param questionType Question type (optional, uses game's selected type if not provided)
      * @param reciterId Optional reciter ID for audio
      * @return Created GameRoundDTO
      */
@@ -150,10 +160,86 @@ public class GameSessionService {
             throw new IllegalStateException("Cannot create round when game is not active");
         }
 
+        // Get selected question types for this game
+        List<String> selectedQuestionTypes = session.getSelectedQuestionTypes() != null && !session.getSelectedQuestionTypes().isEmpty()
+            ? Arrays.asList(session.getSelectedQuestionTypes().split(","))
+            : new ArrayList<>(QUESTION_POINTS.keySet());
+
+        if (selectedQuestionTypes.isEmpty()) {
+            throw new IllegalStateException("No question types selected for this game");
+        }
+
+        // Always select a new ayat for each round (one question per verse)
+        Ayat ayat = getNextAyat(session);
+
+        if (ayat == null) {
+            throw new IllegalStateException("No available Ayat for round");
+        }
+
+        // Use the single selected question type (no random selection needed)
+        String nextQuestionType = selectedQuestionTypes.get(0);
+
+        // Update session's current verse
+        session.setCurrentSurahNumber(ayat.getSurahNumber());
+        session.setCurrentAyatNumber(ayat.getAyatNumber());
+        session.setAskedQuestionTypes(nextQuestionType); // Store the single question asked
+        session = sessionRepository.save(session);
+
         // Get next round number
         long roundCount = roundRepository.countBySessionId(sessionId);
         int nextRoundNumber = (int) roundCount + 1;
 
+        // Generate audio URL
+        String audioUrl = ayatService.generateAudioUrl(ayat, reciterId);
+
+        // Create round
+        GameRound round = new GameRound();
+        round.setSession(session);
+        round.setRoundNumber(nextRoundNumber);
+        round.setSurahNumber(ayat.getSurahNumber());
+        round.setSurahNameArabic(ayat.getSurah().getNameArabic());
+        round.setSurahNameEnglish(ayat.getSurah().getNameEnglish());
+        round.setAyatNumber(ayat.getAyatNumber());
+        round.setArabicText(ayat.getArabicText());
+        round.setTranslation(ayat.getTranslationEn());
+        round.setAudioUrl(audioUrl);
+        round.setCurrentQuestionType(nextQuestionType);
+        round.setStartedAt(LocalDateTime.now());
+
+        // Fetch previous and next ayahs for navigation (only for guess_next_ayat and guess_previous_ayat)
+        if ("guess_next_ayat".equals(nextQuestionType) || "guess_previous_ayat".equals(nextQuestionType)) {
+            // Fetch previous ayah
+            Ayat previousAyat = getPreviousAyah(ayat);
+            if (previousAyat != null) {
+                round.setPreviousAyatNumber(previousAyat.getAyatNumber());
+                round.setPreviousArabicText(previousAyat.getArabicText());
+                round.setPreviousTranslation(previousAyat.getTranslationEn());
+            }
+
+            // Fetch next ayah
+            Ayat nextAyat = getNextAyah(ayat);
+            if (nextAyat != null) {
+                round.setNextAyatNumber(nextAyat.getAyatNumber());
+                round.setNextArabicText(nextAyat.getArabicText());
+                round.setNextTranslation(nextAyat.getTranslationEn());
+            }
+        }
+
+        round = roundRepository.save(round);
+
+        log.info("Created round {} for session {} with Ayat {}/{} and question type: {}",
+            nextRoundNumber, sessionId, ayat.getSurahNumber(), ayat.getAyatNumber(), nextQuestionType);
+
+        return GameRoundDTO.fromEntity(round);
+    }
+
+    /**
+     * Get the next available ayat for the session.
+     *
+     * @param session GameSession
+     * @return Next Ayat
+     */
+    private Ayat getNextAyat(GameSession session) {
         // Get used ayat IDs to avoid repetition
         Set<Long> usedAyatIds = session.getRounds().stream()
             .filter(r -> r.getSurahNumber() != null && r.getAyatNumber() != null)
@@ -174,31 +260,62 @@ public class GameSessionService {
             );
         }
 
-        if (ayat == null) {
-            throw new IllegalStateException("No available Ayat for round");
+        return ayat;
+    }
+
+    /**
+     * Get the previous ayah (ayah before the given ayah).
+     * Returns null if this is the first ayah of the Quran.
+     *
+     * @param currentAyat Current ayah
+     * @return Previous Ayat or null
+     */
+    private Ayat getPreviousAyah(Ayat currentAyat) {
+        Integer currentSurah = currentAyat.getSurahNumber();
+        Integer currentAyatNumber = currentAyat.getAyatNumber();
+
+        // Try to get previous ayah in same surah
+        if (currentAyatNumber > 1) {
+            return ayatRepository.findBySurahAndAyat(currentSurah, currentAyatNumber - 1);
         }
 
-        // Generate audio URL
-        String audioUrl = ayatService.generateAudioUrl(ayat, reciterId);
+        // First ayah of current surah - get last ayah of previous surah
+        if (currentSurah > 1) {
+            List<Ayat> previousSurahAyats = ayatRepository.findBySurahNumber(currentSurah - 1);
+            if (!previousSurahAyats.isEmpty()) {
+                // Return the last ayah of previous surah
+                return previousSurahAyats.get(previousSurahAyats.size() - 1);
+            }
+        }
 
-        // Create round
-        GameRound round = new GameRound();
-        round.setSession(session);
-        round.setRoundNumber(nextRoundNumber);
-        round.setSurahNumber(ayat.getSurahNumber());
-        round.setAyatNumber(ayat.getAyatNumber());
-        round.setArabicText(ayat.getArabicText());
-        round.setTranslation(ayat.getTranslationEn());
-        round.setAudioUrl(audioUrl);
-        round.setCurrentQuestionType(questionType);
-        round.setStartedAt(LocalDateTime.now());
+        // First ayah of Quran (1:1) - no previous
+        return null;
+    }
 
-        round = roundRepository.save(round);
+    /**
+     * Get the next ayah (ayah after the given ayah).
+     * Returns null if this is the last ayah of the Quran.
+     *
+     * @param currentAyat Current ayah
+     * @return Next Ayat or null
+     */
+    private Ayat getNextAyah(Ayat currentAyat) {
+        Integer currentSurah = currentAyat.getSurahNumber();
+        Integer currentAyatNumber = currentAyat.getAyatNumber();
 
-        log.info("Created round {} for session {} with Ayat {}/{}",
-            nextRoundNumber, sessionId, ayat.getSurahNumber(), ayat.getAyatNumber());
+        // Try to get next ayah in same surah
+        Ayat nextInSameSurah = ayatRepository.findBySurahAndAyat(currentSurah, currentAyatNumber + 1);
+        if (nextInSameSurah != null) {
+            return nextInSameSurah;
+        }
 
-        return GameRoundDTO.fromEntity(round);
+        // Last ayah of current surah - get first ayah of next surah
+        if (currentSurah < 114) {
+            return ayatRepository.findBySurahAndAyat(currentSurah + 1, 1);
+        }
+
+        // Last ayah of Quran (114:6) - no next
+        return null;
     }
 
     /**

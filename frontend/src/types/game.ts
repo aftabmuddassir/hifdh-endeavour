@@ -30,6 +30,10 @@ export interface GameSession {
   createdAt: string;
   currentRoundNumber: number;
   participants: Participant[];
+  selectedQuestionTypes?: QuestionType[];
+  currentSurahNumber?: number;
+  currentAyatNumber?: number;
+  askedQuestionTypes?: QuestionType[];
 }
 
 export interface CreateGameRequest {
@@ -42,16 +46,27 @@ export interface CreateGameRequest {
   scoreboardLimit?: number;
   participantNames?: string[]; // Optional - for Kahoot-style join flow
   reciterId?: number;
+  selectedQuestionTypes?: QuestionType[]; // Question types enabled for this game
 }
 
 export interface GameRound {
   id: number;
   roundNumber: number;
   surahNumber: number;
+  surahNameArabic: string;
+  surahNameEnglish: string;
   ayatNumber: number;
   arabicText: string;
   translation: string;
   audioUrl: string;
+  // Previous ayah data (for navigation)
+  previousAyatNumber?: number;
+  previousArabicText?: string;
+  previousTranslation?: string;
+  // Next ayah data (for navigation)
+  nextAyatNumber?: number;
+  nextArabicText?: string;
+  nextTranslation?: string;
   currentQuestionType: QuestionType;
   startedAt: string;
   endedAt?: string;

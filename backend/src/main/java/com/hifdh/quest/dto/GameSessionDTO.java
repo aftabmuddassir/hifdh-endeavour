@@ -7,6 +7,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -33,6 +35,10 @@ public class GameSessionDTO {
     private LocalDateTime createdAt;
     private Integer currentRoundNumber;
     private List<ParticipantDTO> participants;
+    private List<String> selectedQuestionTypes;
+    private Integer currentSurahNumber;
+    private Integer currentAyatNumber;
+    private List<String> askedQuestionTypes;
 
     /**
      * Convert GameSession entity to DTO.
@@ -49,6 +55,15 @@ public class GameSessionDTO {
             .map(ParticipantDTO::fromEntity)
             .collect(Collectors.toList());
 
+        // Convert comma-separated strings to lists
+        List<String> selectedQuestionTypes = session.getSelectedQuestionTypes() != null && !session.getSelectedQuestionTypes().isEmpty()
+            ? Arrays.asList(session.getSelectedQuestionTypes().split(","))
+            : Collections.emptyList();
+
+        List<String> askedQuestionTypes = session.getAskedQuestionTypes() != null && !session.getAskedQuestionTypes().isEmpty()
+            ? Arrays.asList(session.getAskedQuestionTypes().split(","))
+            : Collections.emptyList();
+
         return GameSessionDTO.builder()
             .id(session.getId())
             .adminId(session.getAdminId())
@@ -63,6 +78,10 @@ public class GameSessionDTO {
             .createdAt(session.getCreatedAt())
             .currentRoundNumber(session.getRounds().isEmpty() ? 0 : session.getRounds().size())
             .participants(participantDTOs)
+            .selectedQuestionTypes(selectedQuestionTypes)
+            .currentSurahNumber(session.getCurrentSurahNumber())
+            .currentAyatNumber(session.getCurrentAyatNumber())
+            .askedQuestionTypes(askedQuestionTypes)
             .build();
     }
 }

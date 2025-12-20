@@ -25,4 +25,5 @@ public class CreateGameRequest {
     private Integer scoreboardLimit;
     private List<String> participantNames;
     private Long reciterId; // Optional reciter for audio
+    private List<String> selectedQuestionTypes; // Question types enabled for this game
 }

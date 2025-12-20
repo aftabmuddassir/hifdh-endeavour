@@ -49,6 +49,18 @@ public class GameSession {
     @Column(name = "status", length = 20)
     private String status; // 'setup', 'active', 'completed'
 
+    @Column(name = "selected_question_types", length = 500)
+    private String selectedQuestionTypes; // Comma-separated list of enabled question types
+
+    @Column(name = "current_surah_number")
+    private Integer currentSurahNumber;
+
+    @Column(name = "current_ayat_number")
+    private Integer currentAyatNumber;
+
+    @Column(name = "asked_question_types", length = 500)
+    private String askedQuestionTypes; // Comma-separated list of questions asked for current verse
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

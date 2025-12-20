@@ -2,7 +2,7 @@
  * API service for making HTTP requests to the backend
  */
 
-import type { CreateGameRequest, GameSession, Reciter, Participant } from '../types/game';
+import type { CreateGameRequest, GameSession, Reciter, Participant, GameRound } from '../types/game';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
@@ -107,6 +107,71 @@ class ApiService {
       method: 'POST',
       body: JSON.stringify({ name }),
     });
+  }
+
+  // ============================================
+  // ROUND MANAGEMENT
+  // ============================================
+
+  /**
+   * Create a new round (question type is auto-selected by backend)
+   */
+  async createRound(
+    sessionId: string,
+    questionType?: string,
+    reciterId?: number
+  ): Promise<GameRound> {
+    // Only include fields that are defined
+    const body: { questionType?: string; reciterId?: number } = {};
+    if (questionType !== undefined) {
+      body.questionType = questionType;
+    }
+    if (reciterId !== undefined) {
+      body.reciterId = reciterId;
+    }
+
+    return this.fetch<GameRound>(`/api/game/${sessionId}/rounds`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  }
+
+  /**
+   * Get current round for a session
+   */
+  async getCurrentRound(sessionId: string): Promise<GameRound | null> {
+    try {
+      return await this.fetch<GameRound>(`/api/game/${sessionId}/rounds/current`);
+    } catch (error) {
+      // Return null if no current round (404)
+      return null;
+    }
+  }
+
+  /**
+   * Get all rounds for a session
+   */
+  async getRounds(sessionId: string): Promise<GameRound[]> {
+    return this.fetch<GameRound[]>(`/api/game/${sessionId}/rounds`);
+  }
+
+  /**
+   * End a round
+   */
+  async endRound(roundId: number): Promise<GameRound> {
+    return this.fetch<GameRound>(`/api/game/rounds/${roundId}/end`, {
+      method: 'POST',
+    });
+  }
+
+  /**
+   * Get question points for a question type
+   */
+  async getQuestionPoints(questionType: string): Promise<number> {
+    const response = await this.fetch<{ points: number }>(
+      `/api/game/question-points/${questionType}`
+    );
+    return response.points;
   }
 
   // ============================================
