@@ -37,11 +37,11 @@ public interface BuzzerPressRepository extends JpaRepository<BuzzerPress, Long> 
     long countByParticipantIdAndRoundId(Long participantId, Long roundId);
 
     /**
-     * Get the next available press order for a round.
+     * Get the next available buzz rank for a round.
      *
      * @param roundId Round ID
-     * @return Next press order number
+     * @return Next buzz rank number
      */
-    @Query("SELECT COALESCE(MAX(bp.pressOrder), 0) + 1 FROM BuzzerPress bp WHERE bp.round.id = :roundId")
-    Integer getNextPressOrder(Long roundId);
+    @Query("SELECT COALESCE(MAX(bp.buzzRank), 0) + 1 FROM BuzzerPress bp WHERE bp.round.id = :roundId")
+    Integer getNextBuzzRank(Long roundId);
 }

@@ -264,8 +264,8 @@ public class GameController {
                 return ResponseEntity.badRequest().build();
             }
 
-            BuzzerPressDTO buzzerPress = buzzerService.pressBuzzer(roundId, participantId);
-            return ResponseEntity.status(HttpStatus.CREATED).body(buzzerPress);
+            com.hifdh.quest.model.BuzzerPress buzzerPress = buzzerService.pressBuzzer(roundId, participantId);
+            return ResponseEntity.status(HttpStatus.CREATED).body(BuzzerPressDTO.fromEntity(buzzerPress));
         } catch (IllegalStateException | IllegalArgumentException e) {
             log.error("Buzzer press failed: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
@@ -279,8 +279,11 @@ public class GameController {
      */
     @GetMapping("/rounds/{roundId}/buzzer-presses")
     public ResponseEntity<List<BuzzerPressDTO>> getBuzzerPresses(@PathVariable Long roundId) {
-        List<BuzzerPressDTO> presses = buzzerService.getBuzzerPressesForRound(roundId);
-        return ResponseEntity.ok(presses);
+        List<com.hifdh.quest.model.BuzzerPress> presses = buzzerService.getBuzzerPressesForRound(roundId);
+        List<BuzzerPressDTO> dtos = presses.stream()
+            .map(BuzzerPressDTO::fromEntity)
+            .collect(java.util.stream.Collectors.toList());
+        return ResponseEntity.ok(dtos);
     }
 
     /**
@@ -289,11 +292,11 @@ public class GameController {
      */
     @GetMapping("/rounds/{roundId}/next-in-line")
     public ResponseEntity<BuzzerPressDTO> getNextInLine(@PathVariable Long roundId) {
-        BuzzerPressDTO next = buzzerService.getNextInLine(roundId);
+        com.hifdh.quest.model.BuzzerPress next = buzzerService.getNextInLine(roundId);
         if (next == null) {
             return ResponseEntity.noContent().build();
         }
-        return ResponseEntity.ok(next);
+        return ResponseEntity.ok(BuzzerPressDTO.fromEntity(next));
     }
 
     /**
@@ -303,8 +306,8 @@ public class GameController {
     @PostMapping("/buzzer-presses/{buzzerPressId}/got-chance")
     public ResponseEntity<BuzzerPressDTO> markAsGotChance(@PathVariable Long buzzerPressId) {
         try {
-            BuzzerPressDTO buzzerPress = buzzerService.markAsGotChance(buzzerPressId);
-            return ResponseEntity.ok(buzzerPress);
+            com.hifdh.quest.model.BuzzerPress buzzerPress = buzzerService.markAsGotChance(buzzerPressId);
+            return ResponseEntity.ok(BuzzerPressDTO.fromEntity(buzzerPress));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
         }
@@ -327,8 +330,8 @@ public class GameController {
                 return ResponseEntity.badRequest().build();
             }
 
-            BuzzerPressDTO buzzerPress = buzzerService.recordAnswer(buzzerPressId, answerText, isCorrect);
-            return ResponseEntity.ok(buzzerPress);
+            com.hifdh.quest.model.BuzzerPress buzzerPress = buzzerService.recordAnswer(buzzerPressId, answerText, isCorrect);
+            return ResponseEntity.ok(BuzzerPressDTO.fromEntity(buzzerPress));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
         }

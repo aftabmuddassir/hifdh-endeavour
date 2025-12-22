@@ -61,6 +61,16 @@ public class GameSession {
     @Column(name = "asked_question_types", length = 500)
     private String askedQuestionTypes; // Comma-separated list of questions asked for current verse
 
+    // New player game fields from V001 migration
+    @Column(name = "audio_mode", length = 20)
+    private String audioMode = "ALL_DEVICES"; // 'ALL_DEVICES' or 'HOST_ONLY'
+
+    @Column(name = "round_limit")
+    private Integer roundLimit; // NULL = unlimited rounds
+
+    @Column(name = "allow_text_answers")
+    private Boolean allowTextAnswers = true;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

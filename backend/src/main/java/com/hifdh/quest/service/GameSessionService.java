@@ -4,10 +4,12 @@ import com.hifdh.quest.dto.CreateGameRequest;
 import com.hifdh.quest.dto.GameRoundDTO;
 import com.hifdh.quest.dto.GameSessionDTO;
 import com.hifdh.quest.dto.ParticipantDTO;
+import com.hifdh.quest.dto.websocket.*;
 import com.hifdh.quest.model.*;
 import com.hifdh.quest.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,7 +23,6 @@ import java.util.stream.Collectors;
  */
 @Service
 @Transactional
-@RequiredArgsConstructor
 @Slf4j
 public class GameSessionService {
 
@@ -32,6 +33,28 @@ public class GameSessionService {
     private final AyatRepository ayatRepository;
     private final AyatService ayatService;
     private final SimpMessagingTemplate messagingTemplate;
+    private final BuzzerService buzzerService;
+
+    // Constructor with @Lazy to break circular dependency with BuzzerService
+    public GameSessionService(
+        GameSessionRepository sessionRepository,
+        GameParticipantRepository participantRepository,
+        GameRoundRepository roundRepository,
+        GameQuestionRepository questionRepository,
+        AyatRepository ayatRepository,
+        AyatService ayatService,
+        SimpMessagingTemplate messagingTemplate,
+        @Lazy BuzzerService buzzerService
+    ) {
+        this.sessionRepository = sessionRepository;
+        this.participantRepository = participantRepository;
+        this.roundRepository = roundRepository;
+        this.questionRepository = questionRepository;
+        this.ayatRepository = ayatRepository;
+        this.ayatService = ayatService;
+        this.messagingTemplate = messagingTemplate;
+        this.buzzerService = buzzerService;
+    }
 
     // Question types with their points
     private static final Map<String, Integer> QUESTION_POINTS = Map.of(
@@ -230,7 +253,38 @@ public class GameSessionService {
         log.info("Created round {} for session {} with Ayat {}/{} and question type: {}",
             nextRoundNumber, sessionId, ayat.getSurahNumber(), ayat.getAyatNumber(), nextQuestionType);
 
+        // Reset buzzer state for new round
+        buzzerService.resetBuzzStateForNewRound(sessionId);
+
+        // Broadcast ROUND_STARTED event to all players
+        broadcastRoundStarted(buildRoundStartedEvent(round, session));
+
         return GameRoundDTO.fromEntity(round);
+    }
+
+    /**
+     * Build RoundStartedEvent from round and session data
+     */
+    private com.hifdh.quest.dto.websocket.RoundStartedEvent buildRoundStartedEvent(GameRound round, GameSession session) {
+        return com.hifdh.quest.dto.websocket.RoundStartedEvent.builder()
+            .sessionId(session.getId().toString())
+            .roundId(round.getId().toString())
+            .roundNumber(round.getRoundNumber())
+            .totalRounds(session.getRoundLimit())
+            .ayat(com.hifdh.quest.dto.websocket.RoundStartedEvent.AyatData.builder()
+                .surahNumber(round.getSurahNumber())
+                .ayatNumber(round.getAyatNumber())
+                .arabicText(round.getArabicText())
+                .translationEn(round.getTranslation())
+                .surahName(round.getSurahNameEnglish())
+                .build())
+            .questionType(round.getCurrentQuestionType())
+            .audioUrl(round.getAudioUrl())
+            .audioMode(session.getAudioMode() != null ? session.getAudioMode() : "ALL_DEVICES")
+            .autoPlayAudio(true)
+            .timerSeconds(session.getTimerSeconds())
+            .timerStartsAt(java.time.Instant.now())
+            .build();
     }
 
     /**
@@ -513,5 +567,148 @@ public class GameSessionService {
         if (hasJuz && !ayatService.isValidJuz(request.getJuzNumber())) {
             throw new IllegalArgumentException("Invalid Juz number");
         }
+    }
+
+    // ========================================
+    // WebSocket Broadcast Methods for Player Game
+    // ========================================
+
+    /**
+     * Broadcast ROUND_STARTED event to all players in session.
+     * Sent when admin starts a new round.
+     */
+    public void broadcastRoundStarted(RoundStartedEvent event) {
+        String destination = "/topic/game/" + event.getSessionId() + "/events";
+        messagingTemplate.convertAndSend(destination, event);
+        log.debug("Broadcast ROUND_STARTED to {}", destination);
+    }
+
+    /**
+     * Broadcast BUZZER_PRESSED event to all players in session.
+     * Sent when a player presses the buzzer.
+     */
+    public void broadcastBuzzerPressed(BuzzerPressedEvent event) {
+        String destination = "/topic/game/" + event.getSessionId() + "/events";
+        messagingTemplate.convertAndSend(destination, event);
+        log.info("📢 Broadcasting BUZZER_PRESSED (rank {}, participant {}) to {}",
+            event.getBuzzRank(), event.getParticipantName(), destination);
+    }
+
+    /**
+     * Broadcast TIMER_STOPPED event to all players in session.
+     * Sent when buzzer timer expires or all slots are filled.
+     */
+    public void broadcastTimerStopped(TimerStoppedEvent event) {
+        String destination = "/topic/game/" + event.getSessionId() + "/events";
+        messagingTemplate.convertAndSend(destination, event);
+        log.debug("Broadcast TIMER_STOPPED ({}) to {}", event.getReason(), destination);
+    }
+
+    /**
+     * Broadcast ANSWER_TURN event to specific player.
+     * Sent when it's a player's turn to answer.
+     */
+    public void broadcastAnswerTurn(AnswerTurnEvent event) {
+        // Send to all players (so everyone knows whose turn it is)
+        String destination = "/topic/game/" + event.getSessionId() + "/events";
+        messagingTemplate.convertAndSend(destination, event);
+        log.debug("Broadcast ANSWER_TURN (participant {}) to {}", event.getParticipantId(), destination);
+    }
+
+    /**
+     * Broadcast ANSWER_VALIDATED event to all players in session.
+     * Sent after admin validates an answer (correct or wrong).
+     */
+    public void broadcastAnswerValidated(AnswerValidatedEvent event) {
+        String destination = "/topic/game/" + event.getSessionId() + "/events";
+        messagingTemplate.convertAndSend(destination, event);
+        log.debug("Broadcast ANSWER_VALIDATED (participant {}, correct: {}) to {}",
+            event.getParticipantId(), event.getIsCorrect(), destination);
+    }
+
+    /**
+     * Broadcast ANSWER_REVEALED event to all players in session.
+     * Sent when all players answer incorrectly and correct answer is revealed.
+     */
+    public void broadcastAnswerRevealed(AnswerRevealedEvent event) {
+        String destination = "/topic/game/" + event.getSessionId() + "/events";
+        messagingTemplate.convertAndSend(destination, event);
+        log.debug("Broadcast ANSWER_REVEALED to {}", destination);
+    }
+
+    /**
+     * Broadcast BONUS_AWARDED event to all players in session.
+     * Sent when admin awards bonus points to a player.
+     */
+    public void broadcastBonusAwarded(BonusAwardedEvent event) {
+        String destination = "/topic/game/" + event.getSessionId() + "/events";
+        messagingTemplate.convertAndSend(destination, event);
+        log.debug("Broadcast BONUS_AWARDED (participant {}, +{} points) to {}",
+            event.getParticipantId(), event.getBonusPoints(), destination);
+    }
+
+    /**
+     * Broadcast SCOREBOARD_UPDATE event to all players in session.
+     * Sent after answer validation, bonus awards, or round completion.
+     */
+    public void broadcastScoreboardUpdate(ScoreboardUpdateEvent event) {
+        String destination = "/topic/game/" + event.getSessionId() + "/events";
+        messagingTemplate.convertAndSend(destination, event);
+        log.debug("Broadcast SCOREBOARD_UPDATE ({} players) to {}", event.getScores().size(), destination);
+    }
+
+    /**
+     * Broadcast ROUND_ENDED event to all players in session.
+     * Sent when admin ends the current round.
+     */
+    public void broadcastRoundEnded(String sessionId, Long roundId) {
+        String destination = "/topic/game/" + sessionId + "/events";
+        Map<String, Object> event = Map.of(
+            "type", "ROUND_ENDED",
+            "sessionId", sessionId,
+            "roundId", roundId.toString()
+        );
+        messagingTemplate.convertAndSend(destination, event);
+        log.info("📢 Broadcast ROUND_ENDED (round {}) to {}", roundId, destination);
+    }
+
+    /**
+     * Broadcast NEXT_ROUND_READY event to all players in session.
+     * Sent when admin is ready to start the next round (countdown before round starts).
+     */
+    public void broadcastNextRoundReady(NextRoundReadyEvent event) {
+        String destination = "/topic/game/" + event.getSessionId() + "/events";
+        messagingTemplate.convertAndSend(destination, event);
+        log.debug("Broadcast NEXT_ROUND_READY (round {}) to {}", event.getNextRoundNumber(), destination);
+    }
+
+    /**
+     * Broadcast GAME_ENDED event to all players in session.
+     * Sent when game session ends (by admin or reaching round limit).
+     */
+    public void broadcastGameEnded(GameEndedEvent event) {
+        String destination = "/topic/game/" + event.getSessionId() + "/events";
+        messagingTemplate.convertAndSend(destination, event);
+        log.debug("Broadcast GAME_ENDED ({}) to {}", event.getReason(), destination);
+    }
+
+    /**
+     * Broadcast PLAYER_DISCONNECTED event to all players in session.
+     * Sent when a player's WebSocket connection is lost.
+     */
+    public void broadcastPlayerDisconnected(PlayerDisconnectedEvent event) {
+        String destination = "/topic/game/" + event.getSessionId() + "/events";
+        messagingTemplate.convertAndSend(destination, event);
+        log.debug("Broadcast PLAYER_DISCONNECTED (participant {}) to {}", event.getParticipantId(), destination);
+    }
+
+    /**
+     * Broadcast PLAYER_RECONNECTED event to all players in session.
+     * Sent when a previously disconnected player reconnects.
+     */
+    public void broadcastPlayerReconnected(PlayerReconnectedEvent event) {
+        String destination = "/topic/game/" + event.getSessionId() + "/events";
+        messagingTemplate.convertAndSend(destination, event);
+        log.debug("Broadcast PLAYER_RECONNECTED (participant {}) to {}", event.getParticipantId(), destination);
     }
 }

@@ -46,25 +46,28 @@ public class GameWebSocketController {
             log.info("Buzzer press from participant {} in round {}", participantId, roundId);
 
             // Process buzzer press
-            BuzzerPressDTO buzzerPress = buzzerService.pressBuzzer(roundId, participantId);
+            com.hifdh.quest.model.BuzzerPress buzzerPress = buzzerService.pressBuzzer(roundId, participantId);
 
             // Broadcast to all participants in this game
             messagingTemplate.convertAndSend(
                 "/topic/game/" + sessionId + "/buzzer",
                 Map.of(
                     "type", "BUZZER_PRESS",
-                    "data", buzzerPress,
+                    "data", BuzzerPressDTO.fromEntity(buzzerPress),
                     "timestamp", System.currentTimeMillis()
                 )
             );
 
             // Also send updated buzzer queue
-            List<BuzzerPressDTO> buzzerQueue = buzzerService.getBuzzerPressesForRound(roundId);
+            List<com.hifdh.quest.model.BuzzerPress> buzzerQueue = buzzerService.getBuzzerPressesForRound(roundId);
+            List<BuzzerPressDTO> buzzerQueueDTOs = buzzerQueue.stream()
+                .map(BuzzerPressDTO::fromEntity)
+                .collect(java.util.stream.Collectors.toList());
             messagingTemplate.convertAndSend(
                 "/topic/game/" + sessionId + "/buzzer-queue",
                 Map.of(
                     "type", "BUZZER_QUEUE_UPDATE",
-                    "data", buzzerQueue,
+                    "data", buzzerQueueDTOs,
                     "timestamp", System.currentTimeMillis()
                 )
             );
@@ -87,7 +90,7 @@ public class GameWebSocketController {
     /**
      * Start a new round.
      * Client sends to: /app/game/{sessionId}/start-round
-     * Broadcasts to: /topic/game/{sessionId}/round
+     * Note: GameSessionService.createRound() now handles broadcasting ROUND_STARTED event
      */
     @MessageMapping("/game/{sessionId}/start-round")
     public void handleStartRound(
@@ -101,21 +104,8 @@ public class GameWebSocketController {
 
             log.info("Starting new round for session {} with question type: {}", sessionId, questionType);
 
-            // Create new round
-            GameRoundDTO round = gameSessionService.createRound(sessionId, questionType, reciterId);
-
-            // Reset buzzers for new round
-            buzzerService.resetBuzzersForSession(sessionId);
-
-            // Broadcast round start to all participants
-            messagingTemplate.convertAndSend(
-                "/topic/game/" + sessionId + "/round",
-                Map.of(
-                    "type", "ROUND_START",
-                    "data", round,
-                    "timestamp", System.currentTimeMillis()
-                )
-            );
+            // Create new round (service handles buzzer reset and ROUND_STARTED broadcast)
+            gameSessionService.createRound(sessionId, questionType, reciterId);
 
         } catch (IllegalStateException | IllegalArgumentException e) {
             log.error("Failed to start round: {}", e.getMessage());
@@ -223,14 +213,14 @@ public class GameWebSocketController {
 
             log.info("Giving chance to buzzer press {}", buzzerPressId);
 
-            BuzzerPressDTO buzzerPress = buzzerService.markAsGotChance(buzzerPressId);
+            com.hifdh.quest.model.BuzzerPress buzzerPress = buzzerService.markAsGotChance(buzzerPressId);
 
             // Broadcast who got the chance
             messagingTemplate.convertAndSend(
                 "/topic/game/" + sessionId + "/buzzer",
                 Map.of(
                     "type", "GOT_CHANCE",
-                    "data", buzzerPress,
+                    "data", BuzzerPressDTO.fromEntity(buzzerPress),
                     "timestamp", System.currentTimeMillis()
                 )
             );
@@ -257,14 +247,14 @@ public class GameWebSocketController {
 
             log.info("Recording answer for buzzer press {} - correct: {}", buzzerPressId, isCorrect);
 
-            BuzzerPressDTO buzzerPress = buzzerService.recordAnswer(buzzerPressId, answerText, isCorrect);
+            com.hifdh.quest.model.BuzzerPress buzzerPress = buzzerService.recordAnswer(buzzerPressId, answerText, isCorrect);
 
             // Broadcast answer result
             messagingTemplate.convertAndSend(
                 "/topic/game/" + sessionId + "/answer",
                 Map.of(
                     "type", "ANSWER_RECORDED",
-                    "data", buzzerPress,
+                    "data", BuzzerPressDTO.fromEntity(buzzerPress),
                     "timestamp", System.currentTimeMillis()
                 )
             );
@@ -276,7 +266,7 @@ public class GameWebSocketController {
 
                 if (points != null && points > 0) {
                     ParticipantDTO participant = gameSessionService.addScore(
-                        buzzerPress.getParticipantId(),
+                        buzzerPress.getParticipant().getId(),
                         points
                     );
 

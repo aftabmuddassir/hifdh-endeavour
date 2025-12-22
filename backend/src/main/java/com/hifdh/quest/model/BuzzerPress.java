@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -27,19 +28,31 @@ public class BuzzerPress {
     @JoinColumn(name = "participant_id", nullable = false)
     private GameParticipant participant;
 
+    @Column(name = "buzz_rank")
+    private Integer buzzRank;
+
+    @Column(name = "press_order", nullable = false)
+    private Integer pressOrder;
+
+    @Column(name = "buzzed_at_seconds", precision = 6, scale = 3)
+    private BigDecimal buzzedAtSeconds;
+
     @CreationTimestamp
     @Column(name = "pressed_at", updatable = false)
     private LocalDateTime pressedAt;
 
-    @Column(name = "press_order")
-    private Integer pressOrder;
-
-    @Column(name = "got_chance")
-    private Boolean gotChance = false;
+    @Column(name = "got_chance_to_answer")
+    private Boolean gotChanceToAnswer = false;
 
     @Column(name = "answer_text", columnDefinition = "TEXT")
     private String answerText;
 
+    @Column(name = "answer_submitted_at")
+    private LocalDateTime answerSubmittedAt;
+
     @Column(name = "is_correct")
     private Boolean isCorrect;
+
+    @Column(name = "points_awarded")
+    private Integer pointsAwarded = 0;
 }

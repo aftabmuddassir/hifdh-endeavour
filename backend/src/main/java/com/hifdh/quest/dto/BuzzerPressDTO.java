@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
@@ -22,10 +23,13 @@ public class BuzzerPressDTO {
     private Long participantId;
     private String participantName;
     private LocalDateTime pressedAt;
-    private Integer pressOrder;
-    private Boolean gotChance;
+    private Integer buzzRank;
+    private BigDecimal buzzedAtSeconds;
+    private Boolean gotChanceToAnswer;
     private String answerText;
+    private LocalDateTime answerSubmittedAt;
     private Boolean isCorrect;
+    private Integer pointsAwarded;
 
     /**
      * Convert BuzzerPress entity to DTO.
@@ -44,10 +48,13 @@ public class BuzzerPressDTO {
             .participantId(buzzerPress.getParticipant().getId())
             .participantName(buzzerPress.getParticipant().getName())
             .pressedAt(buzzerPress.getPressedAt())
-            .pressOrder(buzzerPress.getPressOrder())
-            .gotChance(buzzerPress.getGotChance())
+            .buzzRank(buzzerPress.getBuzzRank())
+            .buzzedAtSeconds(buzzerPress.getBuzzedAtSeconds())
+            .gotChanceToAnswer(buzzerPress.getGotChanceToAnswer())
             .answerText(buzzerPress.getAnswerText())
+            .answerSubmittedAt(buzzerPress.getAnswerSubmittedAt())
             .isCorrect(buzzerPress.getIsCorrect())
+            .pointsAwarded(buzzerPress.getPointsAwarded())
             .build();
     }
 }
