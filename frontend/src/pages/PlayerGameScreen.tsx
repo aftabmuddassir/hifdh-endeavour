@@ -80,7 +80,6 @@ export default function PlayerGameScreen({
     totalSeconds: currentRound?.timerSeconds || 60,
     serverStartTime: currentRound?.timerStartsAt || null,
     onTimeUp: () => {
-      console.log('⏰ Time is up!');
       // Disable buzzer when time runs out
       if (buzzerState === 'enabled') {
         setBuzzerState('locked');
@@ -90,7 +89,6 @@ export default function PlayerGameScreen({
 
   // Event Handlers
   function handleRoundStarted(event: RoundStartedEvent) {
-    console.log('🎮 Round started:', event);
     setCurrentRound(event);
 
     // Reset buzzer state
@@ -116,8 +114,6 @@ export default function PlayerGameScreen({
   }
 
   function handleBuzzerPressed(event: BuzzerPressedEvent) {
-    console.log('🔔 Buzzer pressed:', event);
-
     // Check if it's this player who buzzed
     if (event.participantId === participantId) {
       setMyBuzzRank(event.buzzRank);
@@ -132,7 +128,6 @@ export default function PlayerGameScreen({
   }
 
   function handleTimerStopped(event: TimerStoppedEvent) {
-    console.log('⏹️ Timer stopped:', event);
     stopTimer();
 
     // Lock buzzer if not already buzzed
@@ -142,14 +137,14 @@ export default function PlayerGameScreen({
   }
 
   function handleAnswerValidated(event: AnswerValidatedEvent) {
-    console.log('✅ Answer validated:', event);
-
     // Check if it's this player's answer
     if (event.participantId === participantId) {
       if (event.isCorrect) {
-        showFeedback('correct', `+${event.pointsAwarded} points!`, undefined, event.pointsAwarded);
+        // Show feedback with detailed point breakdown
+        const message = event.feedback || `+${event.totalPoints} points!`;
+        showFeedback('correct', message, undefined, event.totalPoints);
       } else {
-        showFeedback('wrong', 'Better luck next time!');
+        showFeedback('wrong', event.feedback || 'Better luck next time!');
       }
     }
   }
@@ -267,7 +262,6 @@ export default function PlayerGameScreen({
 
     wsService
       .subscribeToGameSession(sessionId, (updatedSession) => {
-        console.log('📥 Game session updated');
         setGameSession(updatedSession);
         setLoading(false);
       })

@@ -43,6 +43,9 @@ public class GameParticipant {
     @Column(name = "consecutive_first_buzzes")
     private Integer consecutiveFirstBuzzes = 0;
 
+    @Column(name = "consecutive_correct_answers")
+    private Integer consecutiveCorrectAnswers = 0;
+
     @Column(name = "is_blocked_next_round")
     private Boolean isBlockedNextRound = false;
 

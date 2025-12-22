@@ -51,8 +51,13 @@ export interface AnswerValidatedEvent extends GameEvent {
   participantId: number;
   participantName: string;
   isCorrect: boolean;
-  pointsAwarded: number;
-  newTotalScore: number;
+  basePoints: number;
+  totalPoints: number;
+  timeMultiplier: number;
+  timeBonusPoints: number;
+  buzzRankBonus: number;
+  adminBonusPoints: number; // Streak bonus
+  feedback: string | null;
 }
 
 export interface ScoreboardUpdateEvent extends GameEvent {
@@ -108,8 +113,6 @@ export function usePlayerWebSocket(
         clientElapsedSeconds,
       };
 
-      console.log('🔔 Sending buzzer press:', message);
-
       clientRef.current.publish({
         destination: '/app/player/buzz',
         body: JSON.stringify(message),
@@ -132,8 +135,6 @@ export function usePlayerWebSocket(
         participantId,
         answerText,
       };
-
-      console.log('📝 Submitting answer:', message);
 
       clientRef.current.publish({
         destination: '/app/player/submit-answer',
@@ -168,16 +169,12 @@ export function usePlayerWebSocket(
 
     const client = new Client({
       webSocketFactory: () => new SockJS('http://localhost:8080/ws') as any,
-      debug: (str) => {
-        console.log('[Player WS]', str);
-      },
       reconnectDelay: 5000,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
     });
 
     client.onConnect = () => {
-      console.log('✅ Player WebSocket Connected');
       setIsConnected(true);
       setIsConnecting(false);
 
@@ -227,7 +224,6 @@ export function usePlayerWebSocket(
     };
 
     client.onWebSocketClose = () => {
-      console.log('⚠️ Player WebSocket closed');
       setIsConnected(false);
       setIsConnecting(false);
     };

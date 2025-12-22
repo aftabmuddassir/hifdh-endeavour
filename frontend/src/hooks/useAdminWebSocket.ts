@@ -42,8 +42,6 @@ export function useAdminWebSocket(
         reciterId: reciterId || null,
       };
 
-      console.log('🎮 Starting new round:', message);
-
       clientRef.current.publish({
         destination: '/app/admin/start-round',
         body: JSON.stringify(message),
@@ -68,8 +66,6 @@ export function useAdminWebSocket(
         pointsAwarded,
       };
 
-      console.log('✅ Validating answer:', message);
-
       clientRef.current.publish({
         destination: '/app/admin/validate-answer',
         body: JSON.stringify(message),
@@ -91,8 +87,6 @@ export function useAdminWebSocket(
         roundId,
       };
 
-      console.log('🏁 Ending round:', message);
-
       clientRef.current.publish({
         destination: '/app/admin/end-round',
         body: JSON.stringify(message),
@@ -109,51 +103,39 @@ export function useAdminWebSocket(
 
     const client = new Client({
       webSocketFactory: () => new SockJS('http://localhost:8080/ws') as any,
-      debug: (str) => {
-        console.log('[Admin WS]', str);
-      },
       reconnectDelay: 5000,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
     });
 
     client.onConnect = () => {
-      console.log('✅ Admin WebSocket Connected');
       setIsConnected(true);
       setIsConnecting(false);
 
       // Subscribe to game events
       const topic = `/topic/game/${sessionId}/events`;
-      console.log('🎯 Admin subscribing to:', topic);
 
       const eventsSubscription = client.subscribe(
         topic,
         (message: IMessage) => {
           try {
-            console.log('📨 Admin received RAW message:', message.body);
             const event: GameEvent = JSON.parse(message.body);
-            console.log('📥 Admin received event:', event.type, event);
 
             // Route to appropriate callback
             switch (event.type) {
               case 'ROUND_STARTED':
-                console.log('🎮 Calling onRoundStarted');
                 callbacks.onRoundStarted?.(event as RoundStartedEvent);
                 break;
               case 'BUZZER_PRESSED':
-                console.log('🔔 Calling onBuzzerPressed');
                 callbacks.onBuzzerPressed?.(event as BuzzerPressedEvent);
                 break;
               case 'TIMER_STOPPED':
-                console.log('⏱️ Calling onTimerStopped');
                 callbacks.onTimerStopped?.(event as TimerStoppedEvent);
                 break;
               case 'ANSWER_VALIDATED':
-                console.log('✅ Calling onAnswerValidated');
                 callbacks.onAnswerValidated?.(event as AnswerValidatedEvent);
                 break;
               case 'SCOREBOARD_UPDATE':
-                console.log('🏆 Calling onScoreboardUpdate');
                 callbacks.onScoreboardUpdate?.(event as ScoreboardUpdateEvent);
                 break;
               default:
@@ -166,7 +148,6 @@ export function useAdminWebSocket(
         }
       );
 
-      console.log('✅ Admin subscription created');
       subscriptionsRef.current.push(eventsSubscription);
     };
 
@@ -178,7 +159,6 @@ export function useAdminWebSocket(
     };
 
     client.onWebSocketClose = () => {
-      console.log('⚠️ Admin WebSocket closed');
       setIsConnected(false);
       setIsConnecting(false);
     };

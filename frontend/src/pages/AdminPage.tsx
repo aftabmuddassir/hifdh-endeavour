@@ -38,7 +38,6 @@ export default function AdminPage() {
 
   // WebSocket callback handlers
   const handleBuzzerPressed = useCallback((event: BuzzerPressedEvent) => {
-    console.log('📥 Admin received buzzer press:', event);
     setBuzzerQueue((prev) => {
       // Check if this participant already buzzed in this round
       if (prev.some((b) => b.participantId === event.participantId)) {
@@ -55,14 +54,12 @@ export default function AdminPage() {
   }, []);
 
   const handleRoundStarted = useCallback((event: RoundStartedEvent) => {
-    console.log('📥 Admin received round started:', event);
     // Clear buzzer queue for new round
     setBuzzerQueue([]);
     setCurrentTurnParticipantId(undefined);
   }, []);
 
   const handleScoreboardUpdate = useCallback((event: ScoreboardUpdateEvent) => {
-    console.log('📥 Admin received scoreboard update:', event);
     // Refresh game session to get updated scores
     if (sessionId) {
       loadGameSession();
@@ -79,29 +76,18 @@ export default function AdminPage() {
     }
   );
 
-  // Calculate points based on question type
-  const calculatePoints = (questionType: string): number => {
-    const pointsMap: Record<string, number> = {
-      guess_surah: 10,
-      guess_meaning: 15,
-      guess_next_ayat: 20,
-      guess_previous_ayat: 25,
-      guess_reciter: 15,
-    };
-    return pointsMap[questionType] || 10;
-  };
-
   // Handle answer validation
+  // Note: Points are now calculated on the backend using advanced scoring:
+  // - Base points: 100-250 depending on question type
+  // - Speed bonus: 1.5x (<7s), 1.2x (<14s)
+  // - Streak bonus: +50 (3 correct), +100 (5 correct), +250 (10 correct)
+  // - Buzz rank bonus: +25 (1st), +10 (2nd)
   const handleValidateAnswer = useCallback(
     (participantId: number, isCorrect: boolean) => {
       if (!currentRound) return;
 
-      const pointsAwarded = isCorrect ? calculatePoints(currentRound.currentQuestionType) : 0;
-
-      console.log('✅ Validating answer:', { participantId, isCorrect, pointsAwarded });
-
-      // Call WebSocket to validate answer
-      validateAnswer(participantId, currentRound.id.toString(), isCorrect, pointsAwarded);
+      // Call WebSocket to validate answer (points calculated by backend)
+      validateAnswer(participantId, currentRound.id.toString(), isCorrect, 0);
 
       // If answer is correct, clear entire queue (no need to check others)
       // If answer is wrong, move to next participant
@@ -135,7 +121,6 @@ export default function AdminPage() {
       let unsubscribe: (() => void) | undefined;
 
       wsService.subscribeToGameSession(sessionId, (updatedSession) => {
-        console.log('📥 Admin received update via WebSocket');
         setGameSession(updatedSession);
         setLoading(false);
       }).then(unsub => {
