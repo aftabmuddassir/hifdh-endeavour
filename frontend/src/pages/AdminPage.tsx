@@ -1,9 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { apiService } from '../services/api.service';
 import { wsService } from '../services/websocket.service';
 import type { GameSession, GameRound } from '../types/game';
 import { Link, Copy, Check, Zap, Users, BookOpen, Trophy, Play, Crown, Volume2, StopCircle, PlayCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useAdminWebSocket } from '../hooks/useAdminWebSocket';
+import type {
+  RoundStartedEvent,
+  BuzzerPressedEvent,
+  ScoreboardUpdateEvent,
+} from '../hooks/usePlayerWebSocket';
+import BuzzerQueue from '../components/admin/BuzzerQueue';
 
 export default function AdminPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -24,6 +31,99 @@ export default function AdminPage() {
   const [audioPlaying, setAudioPlaying] = useState(false);
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
   const [hasPlayedAudioOnce, setHasPlayedAudioOnce] = useState(false);
+
+  // Buzzer queue state
+  const [buzzerQueue, setBuzzerQueue] = useState<BuzzerPressedEvent[]>([]);
+  const [currentTurnParticipantId, setCurrentTurnParticipantId] = useState<number | undefined>();
+
+  // WebSocket callback handlers
+  const handleBuzzerPressed = useCallback((event: BuzzerPressedEvent) => {
+    console.log('📥 Admin received buzzer press:', event);
+    setBuzzerQueue((prev) => {
+      // Check if this participant already buzzed in this round
+      if (prev.some((b) => b.participantId === event.participantId)) {
+        return prev;
+      }
+      // Add to queue and sort by buzz rank
+      const newQueue = [...prev, event].sort((a, b) => a.buzzRank - b.buzzRank);
+      // If this is the first buzzer, set them as current turn
+      if (newQueue.length === 1) {
+        setCurrentTurnParticipantId(event.participantId);
+      }
+      return newQueue;
+    });
+  }, []);
+
+  const handleRoundStarted = useCallback((event: RoundStartedEvent) => {
+    console.log('📥 Admin received round started:', event);
+    // Clear buzzer queue for new round
+    setBuzzerQueue([]);
+    setCurrentTurnParticipantId(undefined);
+  }, []);
+
+  const handleScoreboardUpdate = useCallback((event: ScoreboardUpdateEvent) => {
+    console.log('📥 Admin received scoreboard update:', event);
+    // Refresh game session to get updated scores
+    if (sessionId) {
+      loadGameSession();
+    }
+  }, [sessionId]);
+
+  // Initialize admin WebSocket connection
+  const { validateAnswer, endRound: wsEndRound, isConnected: wsConnected } = useAdminWebSocket(
+    sessionId || '',
+    {
+      onBuzzerPressed: handleBuzzerPressed,
+      onRoundStarted: handleRoundStarted,
+      onScoreboardUpdate: handleScoreboardUpdate,
+    }
+  );
+
+  // Calculate points based on question type
+  const calculatePoints = (questionType: string): number => {
+    const pointsMap: Record<string, number> = {
+      guess_surah: 10,
+      guess_meaning: 15,
+      guess_next_ayat: 20,
+      guess_previous_ayat: 25,
+      guess_reciter: 15,
+    };
+    return pointsMap[questionType] || 10;
+  };
+
+  // Handle answer validation
+  const handleValidateAnswer = useCallback(
+    (participantId: number, isCorrect: boolean) => {
+      if (!currentRound) return;
+
+      const pointsAwarded = isCorrect ? calculatePoints(currentRound.currentQuestionType) : 0;
+
+      console.log('✅ Validating answer:', { participantId, isCorrect, pointsAwarded });
+
+      // Call WebSocket to validate answer
+      validateAnswer(participantId, currentRound.id.toString(), isCorrect, pointsAwarded);
+
+      // If answer is correct, clear entire queue (no need to check others)
+      // If answer is wrong, move to next participant
+      if (isCorrect) {
+        // Correct answer - clear the entire queue
+        setBuzzerQueue([]);
+        setCurrentTurnParticipantId(undefined);
+      } else {
+        // Wrong answer - move to next participant in queue
+        setBuzzerQueue((prev) => {
+          const remaining = prev.filter((b) => b.participantId !== participantId);
+          if (remaining.length > 0) {
+            setCurrentTurnParticipantId(remaining[0].participantId);
+          } else {
+            setCurrentTurnParticipantId(undefined);
+          }
+          return remaining;
+        });
+      }
+    },
+    [currentRound, validateAnswer]
+  );
 
   useEffect(() => {
     if (sessionId) {
@@ -142,11 +242,17 @@ export default function AdminPage() {
   };
 
   const handleEndRound = async () => {
-    if (!currentRound) return;
+    if (!currentRound || !sessionId) return;
 
     setIsEndingRound(true);
     try {
+      // Use WebSocket to end round (broadcasts ROUND_ENDED event to all players)
+      wsEndRound(currentRound.id.toString());
+
+      // Also call REST API to update backend state
       await apiService.endRound(currentRound.id);
+
+      // Clear local state
       setCurrentRound(null);
       setTimeRemaining(null); // Reset timer
       setShowAnswer(false); // Reset answer visibility
@@ -582,6 +688,27 @@ export default function AdminPage() {
                 )}
               </div>
             </div>
+
+            {/* Buzzer Queue - Shows players who buzzed */}
+            {buzzerQueue.length > 0 && (
+              <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl shadow-2xl p-6 border-2 border-cyan-500/50">
+                <div className="flex items-center gap-3 mb-6">
+                  <Zap className="w-6 h-6 text-cyan-400" />
+                  <h3 className="text-xl font-bold text-cyan-300">BUZZER QUEUE ({buzzerQueue.length})</h3>
+                  {wsConnected && (
+                    <div className="flex items-center gap-2 text-green-400 text-sm">
+                      <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                      <span>Connected</span>
+                    </div>
+                  )}
+                </div>
+                <BuzzerQueue
+                  buzzes={buzzerQueue}
+                  currentTurnParticipantId={currentTurnParticipantId}
+                  onValidateAnswer={handleValidateAnswer}
+                />
+              </div>
+            )}
 
             {/* Ayah Display - Only shown when answer is revealed */}
             {showAnswer && (() => {

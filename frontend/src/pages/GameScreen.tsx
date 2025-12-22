@@ -1,15 +1,70 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { apiService } from '../services/api.service';
 import { wsService } from '../services/websocket.service';
 import type { GameSession } from '../types/game';
 import { Zap, Users, BookOpen, Trophy, Crown } from 'lucide-react';
+import { useAdminWebSocket } from '../hooks/useAdminWebSocket';
+import type {
+  RoundStartedEvent,
+  BuzzerPressedEvent,
+  ScoreboardUpdateEvent,
+} from '../hooks/usePlayerWebSocket';
+import BuzzerQueue from '../components/admin/BuzzerQueue';
+import AdminRoundControl from '../components/admin/AdminRoundControl';
 
 export default function GameScreen() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const [gameSession, setGameSession] = useState<GameSession | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentRound, setCurrentRound] = useState<RoundStartedEvent | null>(null);
+  const [buzzerQueue, setBuzzerQueue] = useState<BuzzerPressedEvent[]>([]);
+  const [currentTurnParticipantId, setCurrentTurnParticipantId] = useState<number | undefined>();
+
+  // WebSocket callbacks
+  const handleRoundStarted = useCallback((event: RoundStartedEvent) => {
+    console.log('📥 Round started:', event);
+    setCurrentRound(event);
+    setBuzzerQueue([]); // Clear buzzer queue for new round
+    setCurrentTurnParticipantId(undefined);
+  }, []);
+
+  const handleBuzzerPressed = useCallback((event: BuzzerPressedEvent) => {
+    console.log('📥 Buzzer pressed:', event);
+    setBuzzerQueue((prev) => {
+      // Check if this participant already buzzed
+      if (prev.some((b) => b.participantId === event.participantId)) {
+        return prev;
+      }
+      const newQueue = [...prev, event].sort((a, b) => a.buzzRank - b.buzzRank);
+
+      // If this is the first buzz, set them as current turn
+      if (newQueue.length === 1) {
+        setCurrentTurnParticipantId(event.participantId);
+      }
+
+      return newQueue;
+    });
+  }, []);
+
+  const handleScoreboardUpdate = useCallback((event: ScoreboardUpdateEvent) => {
+    console.log('📥 Scoreboard update:', event);
+    // Reload game session to get updated scores
+    if (sessionId) {
+      loadGameSession();
+    }
+  }, [sessionId]);
+
+  // Admin WebSocket connection
+  const { isConnected, startRound, validateAnswer } = useAdminWebSocket(
+    sessionId || '',
+    {
+      onRoundStarted: handleRoundStarted,
+      onBuzzerPressed: handleBuzzerPressed,
+      onScoreboardUpdate: handleScoreboardUpdate,
+    }
+  );
 
   useEffect(() => {
     if (sessionId) {
@@ -243,22 +298,70 @@ export default function GameScreen() {
           </div>
         )}
 
-        {/* Game Active State (placeholder) */}
+        {/* Admin Controls - Game Active State */}
         {gameSession.status === 'active' && (
-          <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl shadow-2xl p-8 text-center border-2 border-green-500/50 animate-pulse">
-            <div className="inline-block p-4 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 mb-4">
-              <Zap className="w-12 h-12 text-white" />
+          <>
+            {/* WebSocket Connection Status */}
+            <div className="mb-4 flex items-center justify-between bg-gray-800/50 rounded-lg px-4 py-2 border border-gray-700">
+              <span className="text-sm text-gray-400">Admin Panel</span>
+              <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                <span className="text-sm text-gray-300">
+                  {isConnected ? 'Connected' : 'Disconnected'}
+                </span>
+              </div>
             </div>
-            <h2 className="text-3xl font-bold text-transparent bg-gradient-to-r from-green-400 to-emerald-500 bg-clip-text mb-4">
-              🎮 GAME IS LIVE! 🎮
-            </h2>
-            <p className="text-cyan-300 text-lg">
-              Game controls and buzzer system will appear here.
-            </p>
-            <p className="text-gray-400 text-sm mt-2">
-              Coming soon: Real-time questions, audio playback, and buzzer controls!
-            </p>
-          </div>
+
+            {/* Round Control & Buzzer Queue Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Round Control */}
+              <AdminRoundControl
+                currentRound={currentRound}
+                onStartRound={(questionType, reciterId) => {
+                  console.log('Starting round:', questionType, reciterId);
+                  startRound(questionType, reciterId);
+                }}
+                timerSeconds={gameSession.timerSeconds}
+              />
+
+              {/* Buzzer Queue */}
+              <BuzzerQueue
+                buzzes={buzzerQueue}
+                currentTurnParticipantId={currentTurnParticipantId}
+                onValidateAnswer={(participantId, isCorrect) => {
+                  if (!currentRound) return;
+
+                  // Calculate points based on question type
+                  const pointsMap: Record<string, number> = {
+                    guess_surah: 10,
+                    guess_meaning: 15,
+                    guess_next_ayat: 20,
+                    guess_previous_ayat: 25,
+                    guess_reciter: 15,
+                  };
+
+                  const points = isCorrect ? pointsMap[currentRound.questionType] || 10 : 0;
+
+                  console.log('Validating answer:', {
+                    participantId,
+                    isCorrect,
+                    points,
+                    roundId: currentRound.roundId,
+                  });
+
+                  validateAnswer(participantId, currentRound.roundId, isCorrect, points);
+
+                  // Move to next participant in queue
+                  const currentIndex = buzzerQueue.findIndex((b) => b.participantId === participantId);
+                  if (currentIndex < buzzerQueue.length - 1) {
+                    setCurrentTurnParticipantId(buzzerQueue[currentIndex + 1].participantId);
+                  } else {
+                    setCurrentTurnParticipantId(undefined); // All done
+                  }
+                }}
+              />
+            </div>
+          </>
         )}
       </div>
     </div>

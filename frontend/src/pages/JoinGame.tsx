@@ -28,7 +28,11 @@ export default function JoinGame() {
     setLoading(true);
 
     try {
-      await apiService.addParticipant(sessionId, playerName.trim());
+      const participant = await apiService.addParticipant(sessionId, playerName.trim());
+
+      // Save participant info to localStorage so GameLobby can detect it
+      localStorage.setItem(`participant_${sessionId}`, participant.id.toString());
+      localStorage.setItem(`participant_name_${sessionId}`, participant.name);
 
       // Navigate to game screen after successful join
       navigate(`/game/${sessionId}`);
