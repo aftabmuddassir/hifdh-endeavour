@@ -5,7 +5,11 @@
   "framework": "vite",
   "rewrites": [
     {
-      "source": "/:path*",
+      "source": "/(static|assets)/(.*)",
+      "destination": "/$1/$2"
+    },
+    {
+      "source": "/(.*)",
       "destination": "/index.html"
     }
   ]
