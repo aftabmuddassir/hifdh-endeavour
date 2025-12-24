@@ -53,13 +53,13 @@ export default function AdminPage() {
     });
   }, []);
 
-  const handleRoundStarted = useCallback((event: RoundStartedEvent) => {
+  const handleRoundStarted = useCallback((_event: RoundStartedEvent) => {
     // Clear buzzer queue for new round
     setBuzzerQueue([]);
     setCurrentTurnParticipantId(undefined);
   }, []);
 
-  const handleScoreboardUpdate = useCallback((event: ScoreboardUpdateEvent) => {
+  const handleScoreboardUpdate = useCallback((_event: ScoreboardUpdateEvent) => {
     // Refresh game session to get updated scores
     if (sessionId) {
       loadGameSession();

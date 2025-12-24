@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Play, BookOpen, Volume2, Clock } from 'lucide-react';
+import { Play, BookOpen, Clock } from 'lucide-react';
 import type { RoundStartedEvent } from '../../hooks/usePlayerWebSocket';
 
 interface AdminRoundControlProps {

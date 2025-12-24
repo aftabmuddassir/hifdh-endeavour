@@ -93,15 +93,15 @@ export function useTimerSync({
   }, []);
 
   // Reset timer
-  const resetTimer = useCallback(() => {
-    hasCalledTimeUpRef.current = false;
-    setTimeRemaining(totalSeconds);
-    setIsActive(false);
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-  }, [totalSeconds]);
+  // const resetTimer = useCallback(() => {
+  //   hasCalledTimeUpRef.current = false;
+  //   setTimeRemaining(totalSeconds);
+  //   setIsActive(false);
+  //   if (intervalRef.current) {
+  //     clearInterval(intervalRef.current);
+  //     intervalRef.current = null;
+  //   }
+  // }, [totalSeconds]);
 
   // Start timer with optional custom start time
   const startTimer = useCallback(
@@ -124,7 +124,7 @@ export function useTimerSync({
     isActive,
     startTimer,
     stopTimer,
-    resetTimer,
+    // resetTimer,
     syncWithServer,
   };
 }

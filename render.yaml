@@ -1,0 +1,49 @@
+# Render.com deployment configuration
+# https://render.com/docs/blueprint-spec
+
+services:
+  # Backend Service
+  - type: web
+    name: hifdh-quest-backend
+    runtime: docker
+    region: oregon
+    plan: free
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: PORT
+        value: "8080"
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        value: "5432"
+      - key: DB_NAME
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: REDIS_HOST
+        sync: false
+      - key: REDIS_PORT
+        sync: false
+      - key: REDIS_PASSWORD
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: LOG_LEVEL
+        value: "INFO"
+      - key: SHOW_SQL
+        value: "false"
+
+# NOTE: This file provides a blueprint for Render deployment
+# You'll still need to:
+# 1. Set up external Database (Neon.tech) and Redis (Upstash)
+# 2. Manually configure the database and Redis connection details in Render dashboard
+# 3. Set JWT_SECRET to a secure random value (use: openssl rand -base64 32)
+# 4. Deploy frontend separately on Vercel or Netlify

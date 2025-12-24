@@ -11,7 +11,6 @@ import {
   type BuzzerPressedEvent,
   type TimerStoppedEvent,
   type AnswerValidatedEvent,
-  type ScoreboardUpdateEvent,
   type RoundEndedEvent,
 } from '../hooks/usePlayerWebSocket';
 import { useTimerSync } from '../hooks/useTimerSync';
@@ -45,7 +44,7 @@ export default function PlayerGameScreen({
   const [currentRound, setCurrentRound] = useState<RoundStartedEvent | null>(null);
   const [buzzerState, setBuzzerState] = useState<BuzzerState>('locked');
   const [myBuzzRank, setMyBuzzRank] = useState<number | null>(null);
-  const [buzzElapsedTime, setBuzzElapsedTime] = useState(0);
+  const [_buzzElapsedTime, setBuzzElapsedTime] = useState(0);
 
   // Feedback state
   const [feedbackType, setFeedbackType] = useState<FeedbackType | null>(null);
@@ -76,7 +75,7 @@ export default function PlayerGameScreen({
   });
 
   // Timer sync
-  const { timeRemaining, startTimer, stopTimer, resetTimer } = useTimerSync({
+  const { timeRemaining, startTimer, stopTimer } = useTimerSync({
     totalSeconds: currentRound?.timerSeconds || 60,
     serverStartTime: currentRound?.timerStartsAt || null,
     onTimeUp: () => {
@@ -127,7 +126,7 @@ export default function PlayerGameScreen({
     }
   }
 
-  function handleTimerStopped(event: TimerStoppedEvent) {
+  function handleTimerStopped(_event: TimerStoppedEvent) {
     stopTimer();
 
     // Lock buzzer if not already buzzed
@@ -142,7 +141,7 @@ export default function PlayerGameScreen({
       if (event.isCorrect) {
         // Show feedback with detailed point breakdown
         const message = event.feedback || `+${event.totalPoints} points!`;
-        showFeedback('correct', message, undefined, event.totalPoints);
+        showFeedback('correct', message, undefined);
       } else {
         showFeedback('wrong', event.feedback || 'Better luck next time!');
       }
@@ -154,7 +153,7 @@ export default function PlayerGameScreen({
     loadGameSession();
   }
 
-  function handleRoundEnded(event: RoundEndedEvent) {
+  function handleRoundEnded(_event: RoundEndedEvent) {
 
     // Stop the timer
     stopTimer();
@@ -239,7 +238,6 @@ export default function PlayerGameScreen({
   const showFeedback = useCallback((
     type: FeedbackType,
     message?: string,
-    rank?: number,
     points?: number
   ) => {
     setFeedbackType(type);

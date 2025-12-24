@@ -4,29 +4,29 @@ import { Link } from 'react-router-dom'
 import { ArrowLeft, Send, Wifi, WifiOff } from 'lucide-react'
 
 export default function TestWebSocket() {
-  const [connected, setConnected] = useState(false)
+  const [connected, _setConnected] = useState(false)
   const [message, setMessage] = useState('')
   const [messages, setMessages] = useState<any[]>([])
-  const [error, setError] = useState<string | null>(null)
+  const [error, _setError] = useState<string | null>(null)
 
   useEffect(() => {
     // Connect to WebSocket
     wsService.connect(
-      () => {
-        setConnected(true)
-        setError(null)
+      // () => {
+      //   setConnected(true)
+      //   setError(null)
 
-        // Subscribe to test topic
-        wsService.subscribe('/topic/test', (msg) => {
-          const body = JSON.parse(msg.body)
-          setMessages((prev) => [...prev, { type: 'received', data: body }])
-        })
-      },
-      (err) => {
-        setConnected(false)
-        setError('Failed to connect to WebSocket server. Is the backend running?')
-        console.error(err)
-      }
+      //   // Subscribe to test topic
+      //   wsService.subscribe('/topic/test', (msg) => {
+      //     const body = JSON.parse(msg.body)
+      //     setMessages((prev) => [...prev, { type: 'received', data: body }])
+      //   })
+      // },
+      // (err: any) => {
+      //   setConnected(false)
+      //   setError('Failed to connect to WebSocket server. Is the backend running?')
+      //   console.error(err)
+      // }
     )
 
     return () => {

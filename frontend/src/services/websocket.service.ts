@@ -25,8 +25,10 @@ export class WebSocketService {
     }
 
     this.connectPromise = new Promise((resolve, reject) => {
+      const wsUrl = import.meta.env.VITE_WS_URL || 'http://localhost:8080/ws';
+
       this.client = new Client({
-        webSocketFactory: () => new SockJS('http://localhost:8080/ws') as any,
+        webSocketFactory: () => new SockJS(wsUrl) as any,
         debug: (str) => {
           console.log('[WebSocket]', str);
         },

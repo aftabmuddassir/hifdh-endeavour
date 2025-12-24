@@ -34,6 +34,7 @@ export interface GameSession {
   currentSurahNumber?: number;
   currentAyatNumber?: number;
   askedQuestionTypes?: QuestionType[];
+  allowTextAnswers: boolean;
 }
 
 export interface CreateGameRequest {

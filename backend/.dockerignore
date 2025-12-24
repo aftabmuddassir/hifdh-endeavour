@@ -1,0 +1,10 @@
+target/
+.mvn/
+*.log
+*.class
+.git/
+.gitignore
+README.md
+Dockerfile
+.dockerignore
+*.md

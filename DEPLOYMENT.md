@@ -1,377 +1,346 @@
-# Deployment Guide - Hifdh Quest
+# Hifdh Quest - Deployment Guide
 
-This guide covers deploying the Hifdh Quest platform to production using cost-effective services.
-
-
-
-## Option 1: Railway (Recommended for Beginners)
-
-### Prerequisites
-- Railway account (sign up at [railway.app](https://railway.app))
-- GitHub account
-- Railway CLI (optional)
-
-### Step 1: Deploy Database
-
-1. Go to Railway dashboard
-2. Click "New Project" → "Provision PostgreSQL"
-3. Note down connection details:
-   - `DATABASE_URL` (automatically set)
-   - Or individual: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`
-
-### Step 2: Deploy Redis
-
-1. In same project, click "New" → "Database" → "Add Redis"
-2. Note down `REDIS_URL`
-
-### Step 3: Initialize Database
-
-```bash
-# Connect to Railway PostgreSQL
-railway connect postgres
-
-# Run migrations
-\i database/migrations/001_create_schema.sql
-\i database/seeds/002_seed_surahs.sql
-\i database/seeds/003_seed_reciters.sql
-```
-
-### Step 4: Deploy Backend
-
-**Option A: Using GitHub**
-
-1. Push code to GitHub
-2. Railway → "New" → "GitHub Repo"
-3. Select `hifdh-endeavour` repo
-4. Set root directory to `backend`
-5. Add environment variables:
-
-```env
-PORT=8080
-DB_HOST=<from-railway>
-DB_PORT=<from-railway>
-DB_NAME=<from-railway>
-DB_USER=<from-railway>
-DB_PASSWORD=<from-railway>
-REDIS_HOST=<from-railway>
-REDIS_PORT=<from-railway>
-JWT_SECRET=<generate-random-string>
-ALLOWED_ORIGINS=https://your-frontend.vercel.app
-```
-
-**Option B: Using Railway CLI**
-
-```bash
-# Install CLI
-npm i -g @railway/cli
-
-# Login
-railway login
-
-# Link project
-cd backend
-railway link
-
-# Deploy
-railway up
-
-# Set variables
-railway variables set JWT_SECRET=your-secret
-railway variables set ALLOWED_ORIGINS=https://your-frontend.vercel.app
-```
-
-6. Railway auto-detects Spring Boot and builds with Maven
-7. Note the deployed URL: `https://hifdh-quest.up.railway.app`
-
-### Step 5: Deploy Frontend (Vercel)
-
-1. Push code to GitHub
-2. Go to [vercel.com](https://vercel.com)
-3. Import GitHub repo
-4. Set root directory to `frontend`
-5. Environment variables:
-
-```env
-VITE_API_URL=https://hifdh-quest.up.railway.app
-VITE_WS_URL=https://hifdh-quest.up.railway.app/ws
-```
-
-6. Deploy
-7. Your app is live at `https://hifdh-quest.vercel.app`
-
-### Step 6: Update CORS
-
-Update Railway backend environment:
-
-```env
-ALLOWED_ORIGINS=https://hifdh-quest.vercel.app
-```
-
-Redeploy backend.
+## 📋 Table of Contents
+1. [Prerequisites](#prerequisites)
+2. [Environment Setup](#environment-setup)  
+3. [Database Migrations](#database-migrations)
+4. [Local Development](#local-development)
+5. [Production Deployment](#production-deployment)
+6. [Post-Deployment Checklist](#post-deployment-checklist)
+7. [Troubleshooting](#troubleshooting)
 
 ---
 
-## Option 2: Render.com
+## 🔧 Prerequisites
 
-### Step 1: Deploy Database (Neon.tech)
+- Docker (v20.10+) and Docker Compose (v2.0+)
+- PostgreSQL (v15+)
+- Redis (v7+)
+- Node.js (v20+) for local development
+- Java (JDK 21+) for local development
 
-1. Sign up at [neon.tech](https://neon.tech)
-2. Create new project: "hifdh-quest"
-3. Copy connection string
-4. Use any PostgreSQL client to run migrations
+---
 
-### Step 2: Deploy Redis (Upstash)
+## ⚙️ Environment Setup
 
-1. Sign up at [upstash.com](https://upstash.com)
-2. Create Redis database
-3. Copy `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`
+### 1. Clone Repository
+```bash
+git clone <your-repo-url>
+cd hifdh-endeavour
+```
 
-### Step 3: Deploy Backend (Render)
+### 2. Create Environment File
+```bash
+cp .env.example .env
+```
 
-1. Go to [render.com](https://render.com)
-2. New → Web Service
-3. Connect GitHub repo
-4. Settings:
-   - **Name**: hifdh-quest-backend
-   - **Root Directory**: backend
+### 3. Configure Critical Variables
+Edit `.env` and set:
+- `DB_PASSWORD` - Strong database password
+- `REDIS_PASSWORD` - Strong Redis password  
+- `JWT_SECRET` - Random 32+ character string
+- `ADMIN_PASSWORD` - Admin password
+- `ALLOWED_ORIGINS` - Your frontend domains
+- `VITE_API_URL` - Your backend URL
+- `VITE_WS_URL` - Your WebSocket URL
+
+---
+
+## 🗄️ Database Migrations
+
+### How It Works
+This project uses **Flyway** for database migrations.
+
+✅ **Migrations run AUTOMATICALLY** when backend starts
+✅ **Migrations are VERSIONED** (V001, V002, V003...)  
+✅ **Flyway tracks** which migrations have run
+
+### Current Migrations
+- V001: Player game fields
+- V002: Buzzer tracking
+- V003: Buzzer presses table
+- V004: Scoring events
+- V005: Bonus awards
+- V006: Press order tracking
+- V007: Streak tracking (NEW)
+
+### ⚠️ IMPORTANT: Never Modify Existing Migrations
+- **DO NOT** combine migration files
+- **DO NOT** edit existing migrations
+- **ALWAYS** create new migrations for changes
+
+---
+
+## 🚀 Production Deployment
+
+### Option 1: Cloud Deployment (Free Tier) - RECOMMENDED
+
+This guide uses free-tier services to deploy your application at zero cost.
+
+#### Services Overview
+- **Backend**: Railway.app or Render.com (Free tier)
+- **Database**: Railway PostgreSQL or Neon.tech (Free tier)
+- **Redis**: Upstash Redis (Free tier: 10K requests/day)
+- **Frontend**: Vercel or Netlify (Free tier)
+- **Estimated Total**: $0/month for MVP
+
+#### Step 1: Deploy Database (Neon.tech)
+
+1. Go to [Neon.tech](https://neon.tech) and sign up
+2. Create a new project
+3. Copy the connection string (looks like: `postgresql://user:password@host/database`)
+4. Note down these values:
+   - `DB_HOST`: Extract from connection string
+   - `DB_PORT`: Usually `5432`
+   - `DB_NAME`: Database name
+   - `DB_USER`: Username
+   - `DB_PASSWORD`: Password
+
+**Alternative**: Use Railway PostgreSQL
+- Go to [Railway.app](https://railway.app)
+- Create new project → Add PostgreSQL
+- Copy connection details from the Variables tab
+
+#### Step 2: Deploy Redis (Upstash)
+
+1. Go to [Upstash.com](https://upstash.com) and sign up
+2. Create a new Redis database
+3. Copy these values:
+   - `REDIS_HOST`: Your endpoint
+   - `REDIS_PORT`: Usually `6379` or custom port
+   - `REDIS_PASSWORD`: Your password
+
+#### Step 3: Deploy Backend (Railway or Render)
+
+##### Option A: Railway
+
+1. Go to [Railway.app](https://railway.app)
+2. Create new project → Deploy from GitHub repo
+3. Select your `hifdh-endeavour` repository
+4. Configure build settings:
+   - **Root Directory**: `/backend`
    - **Build Command**: `mvn clean package -DskipTests`
-   - **Start Command**: `java -jar target/hifdh-quest-1.0.0.jar`
-   - **Instance Type**: Free
+   - **Start Command**: `java -jar target/*.jar`
+5. Add environment variables:
+   ```
+   DB_HOST=<your-neon-host>
+   DB_PORT=5432
+   DB_NAME=<your-db-name>
+   DB_USER=<your-db-user>
+   DB_PASSWORD=<your-db-password>
+   REDIS_HOST=<your-upstash-host>
+   REDIS_PORT=<your-upstash-port>
+   REDIS_PASSWORD=<your-upstash-password>
+   JWT_SECRET=<generate-random-32-char-string>
+   ADMIN_PASSWORD=<your-admin-password>
+   ALLOWED_ORIGINS=https://your-frontend-domain.vercel.app
+   PORT=8080
+   LOG_LEVEL=INFO
+   SHOW_SQL=false
+   ```
+6. Deploy and copy the generated URL (e.g., `https://your-app.railway.app`)
 
-5. Environment variables:
+##### Option B: Render.com
 
-```env
-JAVA_VERSION=17
-PORT=8080
-DB_HOST=<neon-host>
-DB_PORT=5432
-DB_NAME=<neon-db>
-DB_USER=<neon-user>
-DB_PASSWORD=<neon-password>
-REDIS_HOST=<upstash-host>
-REDIS_PORT=<upstash-port>
-REDIS_PASSWORD=<upstash-password>
-JWT_SECRET=<generate-random>
-ALLOWED_ORIGINS=https://hifdh-quest.vercel.app
-```
+1. Go to [Render.com](https://render.com) and sign up
+2. New → Web Service → Connect your GitHub repo
+3. Configure:
+   - **Name**: `hifdh-quest-backend`
+   - **Root Directory**: `backend`
+   - **Runtime**: Java
+   - **Build Command**: `mvn clean package -DskipTests`
+   - **Start Command**: `java -jar target/*.jar`
+4. Add environment variables (same as Railway above)
+5. Create Web Service and copy the URL
 
-6. Deploy
+#### Step 4: Deploy Frontend (Vercel or Netlify)
 
-### Step 4: Deploy Frontend (Vercel)
+##### Option A: Vercel
 
-Same as Option 1, Step 5.
+1. Go to [Vercel.com](https://vercel.com) and sign up
+2. Import your GitHub repository
+3. Configure project:
+   - **Framework Preset**: Vite
+   - **Root Directory**: `frontend`
+   - **Build Command**: `npm run build`
+   - **Output Directory**: `dist`
+4. Add environment variables:
+   ```
+   VITE_API_URL=https://your-backend.railway.app
+   VITE_WS_URL=wss://your-backend.railway.app
+   ```
+5. Deploy and get your frontend URL
+
+##### Option B: Netlify
+
+1. Go to [Netlify.com](https://netlify.com) and sign up
+2. New site from Git → Choose your repo
+3. Configure:
+   - **Base directory**: `frontend`
+   - **Build command**: `npm run build`
+   - **Publish directory**: `frontend/dist`
+4. Add environment variables (same as Vercel)
+5. Deploy
+
+#### Step 5: Update CORS Settings
+
+After deploying frontend, update your backend's `ALLOWED_ORIGINS`:
+- Go to your backend deployment (Railway/Render)
+- Update `ALLOWED_ORIGINS` environment variable with your frontend URL:
+  ```
+  ALLOWED_ORIGINS=https://your-app.vercel.app,https://your-app.netlify.app
+  ```
+- Redeploy backend
+
+#### Step 6: Verify Deployment
+
+1. Open your frontend URL in browser
+2. Check browser console for errors
+3. Test WebSocket connection
+4. Check backend health: `https://your-backend.railway.app/actuator/health`
+5. Access Swagger UI: `https://your-backend.railway.app/swagger-ui.html`
 
 ---
 
-## Option 3: Fly.io (Advanced)
+### Option 2: Docker Compose (VPS/Self-Hosted)
 
-### Prerequisites
-- Fly.io account
-- Fly CLI installed
-
-### Deploy Backend
-
-1. Create `backend/fly.toml`:
-
-```toml
-app = "hifdh-quest"
-primary_region = "iad"
-
-[build]
-  builder = "paketobuildpacks/builder:base"
-  buildpacks = ["gcr.io/paketo-buildpacks/java"]
-
-[env]
-  PORT = "8080"
-
-[[services]]
-  http_checks = []
-  internal_port = 8080
-  protocol = "tcp"
-
-  [[services.ports]]
-    handlers = ["http"]
-    port = 80
-
-  [[services.ports]]
-    handlers = ["tls", "http"]
-    port = 443
-```
-
-2. Deploy:
+If you have a VPS (DigitalOcean, Linode, AWS EC2, etc.):
 
 ```bash
-cd backend
-fly launch
-fly secrets set JWT_SECRET=your-secret
-fly secrets set DB_PASSWORD=your-db-password
-fly deploy
+# Build and start all services
+docker-compose -f docker-compose.prod.yml up -d --build
+
+# Check status
+docker-compose -f docker-compose.prod.yml ps
+
+# View logs
+docker-compose -f docker-compose.prod.yml logs -f
 ```
 
----
-
-## Environment Variables Checklist
-
-### Backend
-
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `DB_HOST` | Database host | `db.railway.app` |
-| `DB_PORT` | Database port | `5432` |
-| `DB_NAME` | Database name | `hifdh_quest` |
-| `DB_USER` | Database user | `postgres` |
-| `DB_PASSWORD` | Database password | `secure123` |
-| `REDIS_HOST` | Redis host | `redis.railway.app` |
-| `REDIS_PORT` | Redis port | `6379` |
-| `REDIS_PASSWORD` | Redis password (if any) | `` |
-| `JWT_SECRET` | JWT signing key | `your-256-bit-secret` |
-| `ALLOWED_ORIGINS` | CORS origins | `https://app.vercel.app` |
-
-### Frontend
-
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `VITE_API_URL` | Backend API URL | `https://api.railway.app` |
-| `VITE_WS_URL` | WebSocket URL | `https://api.railway.app/ws` |
-
----
-
-## Post-Deployment Checklist
-
-- [ ] Backend health check working: `GET /api/test/health`
-- [ ] Database populated with surahs (114 records)
-- [ ] Redis connection successful
-- [ ] WebSocket connection working (test at `/test`)
-- [ ] CORS configured correctly
-- [ ] Frontend can reach backend API
-- [ ] Audio playback working (EveryAyah.com)
-- [ ] Game creation works
-- [ ] Buzzer system functional
-
----
-
-## Monitoring
-
-### Railway
-
-- Dashboard shows logs, metrics, and deployments
-- Set up alerts for downtime
-
-### Vercel
-
-- Analytics dashboard for frontend
-- Build logs and deployment history
-
-### Uptime Monitoring (Optional)
-
-Use free services:
-- [UptimeRobot](https://uptimerobot.com) (50 monitors free)
-- [Freshping](https://freshping.io) (unlimited free)
-
----
-
-## Scaling
-
-### When to Scale
-
-- Database: >500MB data → upgrade Neon tier
-- Redis: >10K commands/day → upgrade Upstash
-- Backend: High CPU/memory → upgrade Railway instance
-
-### Cost Estimates
-
-**100 games/day, 10 concurrent players:**
-- Database: ~50MB → Free tier
-- Redis: ~5K commands → Free tier
-- Backend: Minimal load → Free tier
-- **Total: $0/month**
-
-**1000 games/day, 100 concurrent players:**
-- Database: ~500MB → $10/month
-- Redis: ~50K commands → $10/month
-- Backend: Medium load → $10/month
-- **Total: $30/month**
-
----
-
-## Troubleshooting
-
-### Backend Won't Start
-
-Check logs:
+### Verify Deployment
 ```bash
-railway logs
-# or
-fly logs
+# Check backend health
+curl http://localhost:8080/actuator/health
+
+# Check frontend
+curl http://localhost:80/health
 ```
 
+---
+
+## ✅ Post-Deployment Checklist
+
+- [ ] Change all default passwords
+- [ ] Use strong JWT secret
+- [ ] Enable HTTPS/SSL
+- [ ] Configure CORS properly
+- [ ] Set up database backups
+- [ ] Enable monitoring
+
+---
+
+## 🔍 Troubleshooting
+
+### Cloud Deployment Issues
+
+#### Backend Won't Start
+Check backend logs in your hosting platform (Railway/Render):
+- **Database connection failed** → Verify `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`
+- **Redis connection failed** → Check `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`
+- **Migration failed** → Check Flyway migration files are included in build
+- **Port issues** → Ensure `PORT=8080` is set
+
+#### Frontend Can't Connect to Backend
+- Verify `VITE_API_URL` points to your backend URL (e.g., `https://your-app.railway.app`)
+- Verify `VITE_WS_URL` uses `wss://` (not `ws://`) for secure WebSocket
+- Check browser console for CORS errors
+- Ensure `ALLOWED_ORIGINS` in backend includes your frontend domain
+
+#### WebSocket Connection Failing
+Common causes:
+1. **Wrong protocol**: Use `wss://` (secure) not `ws://` for HTTPS sites
+2. **CORS not configured**: Add frontend domain to `ALLOWED_ORIGINS`
+3. **Railway/Render proxy**: Some platforms may need WebSocket enabled
+   - Railway: WebSocket support is automatic
+   - Render: Ensure Web Service type (not Static Site)
+4. **Path issues**: Check WebSocket endpoint path matches frontend config
+
+#### Database Connection Pool Issues
+If you see "Too many connections" errors on free tier:
+- Neon.tech free tier: Limited to 100 connections
+- Railway PostgreSQL: Limited based on plan
+- Solution: Reduce connection pool size in backend (add to env vars):
+  ```
+  SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE=5
+  SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE=2
+  ```
+
+#### Redis Memory Issues
+Upstash free tier: 256MB storage
+- Monitor usage in Upstash dashboard
+- Consider implementing TTL for cached data
+- Clear cache if needed: Connect via Upstash Console → `FLUSHALL`
+
+### Docker Deployment Issues
+
+#### Backend Won't Start
+```bash
+docker-compose -f docker-compose.prod.yml logs backend
+```
 Common issues:
-- Missing environment variables
-- Database connection failed
-- Port binding error
+- Database connection failed → Check `DB_PASSWORD`
+- Redis connection failed → Check `REDIS_PASSWORD`
+- Migration failed → Check migration files
 
-### WebSocket Connection Failed
+#### Frontend Can't Connect
+- Verify `VITE_API_URL` and `VITE_WS_URL`
+- Check `ALLOWED_ORIGINS` includes your frontend domain
 
-1. Check CORS settings
-2. Verify WebSocket endpoint: `/ws`
-3. Ensure HTTPS is used in production
-4. Check proxy settings on hosting platform
-
-### Database Migration Failed
-
+#### Database Migration Issues
 ```bash
-# Connect directly
-railway connect postgres
-
-# Check tables exist
-\dt
-
-# Re-run migrations manually
-\i migrations/001_create_schema.sql
+# View migration status
+docker-compose -f docker-compose.prod.yml exec postgres psql -U postgres -d hifdh_quest -c "SELECT * FROM flyway_schema_history;"
 ```
 
 ---
 
-## Security Checklist
+## 💡 Pro Tips for Cloud Deployment
 
-- [ ] Change default JWT secret
-- [ ] Use strong database passwords
-- [ ] Enable HTTPS (automatic on Vercel/Railway)
-- [ ] Set up rate limiting (optional)
-- [ ] Enable database backups
-- [ ] Restrict CORS to production domain only
-- [ ] Use environment variables (never hardcode secrets)
-
----
-
-## Rollback Strategy
-
-### Railway/Render
-
-Both platforms keep deployment history:
-1. Go to deployments tab
-2. Select previous working deployment
-3. Click "Redeploy"
-
-### Manual Rollback
-
+### 1. Generate Secure Secrets
 ```bash
-# Revert to previous commit
-git revert HEAD
-git push
+# Generate random JWT secret (32 characters)
+openssl rand -base64 32
 
-# Trigger auto-deployment
+# Or use online generator: https://generate-secret.vercel.app/32
 ```
 
+### 2. Monitor Free Tier Limits
+- **Neon.tech**: 3GB storage, 100 hours compute/month
+- **Upstash Redis**: 10K commands/day, 256MB storage
+- **Railway**: $5 credit/month (~500 hours)
+- **Render**: 750 hours/month per service
+- **Vercel/Netlify**: 100GB bandwidth/month
+
+### 3. Database Seeding
+After first deployment, seed your database with initial data:
+1. Connect to your Neon database using the connection string
+2. Run the seed files from `database/seeds/`:
+   ```bash
+   psql "postgresql://user:pass@host/db" -f database/seeds/002_seed_surahs.sql
+   psql "postgresql://user:pass@host/db" -f database/seeds/003_seed_reciters.sql
+   psql "postgresql://user:pass@host/db" -f database/seeds/004_seed_sample_ayat.sql
+   ```
+
+### 4. Enable Production Optimizations
+Add these environment variables to backend:
+```
+SPRING_JPA_SHOW_SQL=false
+LOG_LEVEL=WARN
+SPRING_DEVTOOLS_RESTART_ENABLED=false
+```
+
+### 5. Setup Custom Domain (Optional)
+- **Vercel/Netlify**: Settings → Domains → Add custom domain
+- **Railway/Render**: Settings → Custom Domain → Configure DNS
+
 ---
-
-## Support
-
-For deployment issues:
-- Railway: [docs.railway.app](https://docs.railway.app)
-- Render: [render.com/docs](https://render.com/docs)
-- Vercel: [vercel.com/docs](https://vercel.com/docs)
-
----
-
-**Deployment Time Estimate**: 30-60 minutes for first time setup

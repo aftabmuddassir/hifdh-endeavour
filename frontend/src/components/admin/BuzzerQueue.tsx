@@ -1,4 +1,4 @@
-import { Zap, Clock, Trophy } from 'lucide-react';
+import { Zap, Clock } from 'lucide-react';
 import type { BuzzerPressedEvent } from '../../hooks/usePlayerWebSocket';
 
 interface BuzzerQueueProps {
@@ -42,9 +42,9 @@ export default function BuzzerQueue({
       <div className="space-y-3">
         {buzzes
           .sort((a, b) => a.buzzRank - b.buzzRank)
-          .map((buzz, index) => {
+          .map((buzz, _) => {
             const isCurrentTurn = buzz.participantId === currentTurnParticipantId;
-            const hasAnswered = buzz.participantId; // TODO: Track who has answered
+            // const hasAnswered = buzz.participantId; // TODO: Track who has answered
 
             return (
               <div
