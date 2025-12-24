@@ -234,9 +234,6 @@ export default function AdminPage() {
       // Use WebSocket to end round (broadcasts ROUND_ENDED event to all players)
       wsEndRound(currentRound.id.toString());
 
-      // Also call REST API to update backend state
-      await apiService.endRound(currentRound.id);
-
       // Clear local state
       setCurrentRound(null);
       setTimeRemaining(null); // Reset timer
