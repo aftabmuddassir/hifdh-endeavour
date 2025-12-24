@@ -13,13 +13,19 @@ import java.util.Arrays;
 public class CorsConfig {
 
     @Value("${cors.allowed-origins}")
-    private String[] allowedOrigins;
+    private String allowedOriginsStr;
 
     @Bean
     public CorsFilter corsFilter() {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowCredentials(true);
-        config.setAllowedOriginPatterns(Arrays.asList(allowedOrigins));
+
+        // Split comma-separated origins and add to allowed patterns
+        String[] origins = allowedOriginsStr.split(",");
+        for (String origin : origins) {
+            config.addAllowedOriginPattern(origin.trim());
+        }
+
         config.addAllowedHeader("*");
         config.addAllowedMethod("*");
 
