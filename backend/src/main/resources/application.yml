@@ -49,6 +49,10 @@ jwt:
 cors:
   allowed-origins: ${ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000}
 
+# Controller CORS (used by @CrossOrigin annotations)
+allowed:
+  origins: ${ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000}
+
 # Logging
 logging:
   level:
