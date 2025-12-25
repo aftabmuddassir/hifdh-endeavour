@@ -122,8 +122,8 @@ export default function RoundDisplay({
               </p>
             </div>
 
-            {/* Surah and Ayat Info */}
-            {surahName && (
+            {/* Surah and Ayat Info - Hide for guess_surah to avoid giving away answer */}
+            {surahName && questionType !== 'guess_surah' && (
               <div className="flex items-center justify-center gap-4 text-gray-400 text-sm">
                 <span className="flex items-center gap-1">
                   <BookOpen className="w-4 h-4" />
