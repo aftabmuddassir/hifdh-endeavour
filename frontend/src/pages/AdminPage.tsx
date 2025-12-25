@@ -742,7 +742,14 @@ export default function AdminPage() {
                         <div className="text-6xl font-bold text-yellow-100 mb-4 drop-shadow-lg">
                           {currentRound.surahNameEnglish}
                         </div>
-                        <div className="text-5xl text-yellow-200 font-arabic mb-4">
+                        <div
+                          className="text-5xl text-yellow-200 mb-4"
+                          style={{
+                            fontFamily: 'Amiri, Traditional Arabic, serif',
+                            direction: 'rtl',
+                            unicodeBidi: 'bidi-override',
+                          }}
+                        >
                           {currentRound.surahNameArabic}
                         </div>
                         <div className="text-2xl text-yellow-300/80 font-semibold">
@@ -759,7 +766,14 @@ export default function AdminPage() {
 
                       {/* Arabic Text - Secondary */}
                       <div className="bg-gradient-to-br from-indigo-900/20 to-purple-900/20 rounded-xl p-6 border border-purple-500/20">
-                        <p className="text-xl text-right text-gray-300 leading-relaxed font-arabic">
+                        <p
+                          className="text-xl text-gray-300 leading-relaxed"
+                          style={{
+                            fontFamily: 'Amiri, Traditional Arabic, serif',
+                            direction: 'rtl',
+                            unicodeBidi: 'bidi-override',
+                          }}
+                        >
                           {displayArabicText}
                         </p>
                       </div>
@@ -797,7 +811,14 @@ export default function AdminPage() {
 
                     {/* Arabic Text - Context */}
                     <div className="bg-gradient-to-br from-indigo-900/20 to-purple-900/20 rounded-xl p-6 mb-6 border border-purple-500/20">
-                      <p className="text-2xl text-right text-gray-300 leading-relaxed font-arabic">
+                      <p
+                        className="text-2xl text-gray-300 leading-relaxed"
+                        style={{
+                          fontFamily: 'Amiri, Traditional Arabic, serif',
+                          direction: 'rtl',
+                          unicodeBidi: 'bidi-override',
+                        }}
+                      >
                         {displayArabicText}
                       </p>
                     </div>
@@ -891,7 +912,14 @@ export default function AdminPage() {
 
                   {/* Arabic Text */}
                   <div className="bg-gradient-to-br from-indigo-900/30 to-purple-900/30 rounded-xl p-8 mb-6 border border-purple-500/30">
-                    <p className="text-3xl text-right text-white leading-relaxed font-arabic">
+                    <p
+                      className="text-3xl text-white leading-relaxed"
+                      style={{
+                        fontFamily: 'Amiri, Traditional Arabic, serif',
+                        direction: 'rtl',
+                        unicodeBidi: 'bidi-override',
+                      }}
+                    >
                       {displayArabicText}
                     </p>
                   </div>
