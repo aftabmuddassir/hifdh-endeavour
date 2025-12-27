@@ -26,6 +26,10 @@ public class OpenApiConfig {
 
     @Bean
     public OpenAPI hifdhQuestOpenAPI() {
+        // Log the production server URL for debugging
+        System.out.println(" DEBUG: productionServerUrl = '" + productionServerUrl + "'");
+        System.out.println(" DEBUG: isEmpty? " + productionServerUrl.isEmpty());
+
         Server localServer = new Server();
         localServer.setUrl("http://localhost:" + serverPort);
         localServer.setDescription("Local Development Server");
@@ -85,10 +89,15 @@ public class OpenApiConfig {
             .contact(contact)
             .license(license);
 
+        var servers = productionServerUrl.isEmpty()
+            ? List.of(localServer)
+            : List.of(productionServer, localServer);
+
+        System.out.println(" DEBUG: Registered servers:");
+        servers.forEach(s -> System.out.println("  - " + s.getDescription() + ": " + s.getUrl()));
+
         return new OpenAPI()
             .info(info)
-            .servers(productionServerUrl.isEmpty()
-                ? List.of(localServer)
-                : List.of(productionServer, localServer));
+            .servers(servers);
     }
 }
