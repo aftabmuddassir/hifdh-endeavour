@@ -21,11 +21,21 @@ public class OpenApiConfig {
     @Value("${server.port:8080}")
     private String serverPort;
 
+    @Value("${app.server-url:}")
+    private String productionServerUrl;
+
     @Bean
     public OpenAPI hifdhQuestOpenAPI() {
         Server localServer = new Server();
         localServer.setUrl("http://localhost:" + serverPort);
         localServer.setDescription("Local Development Server");
+
+        // Production server (if configured)
+        Server productionServer = new Server();
+        productionServer.setUrl(productionServerUrl.isEmpty()
+            ? "http://localhost:" + serverPort
+            : productionServerUrl);
+        productionServer.setDescription("Production Server");
 
         Contact contact = new Contact();
         contact.setName("Hifdh Quest Team");
@@ -77,6 +87,8 @@ public class OpenApiConfig {
 
         return new OpenAPI()
             .info(info)
-            .servers(List.of(localServer));
+            .servers(productionServerUrl.isEmpty()
+                ? List.of(localServer)
+                : List.of(productionServer, localServer));
     }
 }
