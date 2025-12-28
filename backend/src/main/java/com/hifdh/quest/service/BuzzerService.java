@@ -69,9 +69,8 @@ public class BuzzerService {
             throw new IllegalStateException("Player has already buzzed in this round");
         }
 
-        // Get total buzzes for this round
-        List<BuzzerPress> roundBuzzes = buzzerPressRepository.findByRoundIdOrderByPressedAtAsc(round.getId());
-        int buzzRank = roundBuzzes.size() + 1;
+        // Get next buzz rank atomically (prevents race conditions)
+        int buzzRank = buzzerPressRepository.getNextBuzzRank(round.getId());
 
         // Check if max buzzes reached
         if (buzzRank > MAX_BUZZES_PER_ROUND) {
@@ -426,9 +425,8 @@ public class BuzzerService {
             throw new IllegalStateException("Player has already buzzed in this round");
         }
 
-        // Get buzz rank
-        List<BuzzerPress> roundBuzzes = buzzerPressRepository.findByRoundIdOrderByPressedAtAsc(roundId);
-        int buzzRank = roundBuzzes.size() + 1;
+        // Get next buzz rank atomically (prevents race conditions)
+        int buzzRank = buzzerPressRepository.getNextBuzzRank(roundId);
 
         if (buzzRank > MAX_BUZZES_PER_ROUND) {
             throw new IllegalStateException("Maximum buzzes reached for this round");

@@ -62,11 +62,11 @@ public class OpenApiConfig {
                 - 🚫 Anti-spam buzzer system (3-press rule)
 
                 ## Question Types
-                - **Guess Surah** (10 pts) - Identify which Surah the ayat is from
-                - **Guess Meaning** (15 pts) - Translate or explain the ayat
-                - **Guess Next Ayat** (20 pts) - Recite the next ayat in sequence
-                - **Guess Previous Ayat** (25 pts) - Recite the previous ayat in sequence
-                - **Guess Reciter** (15 pts) - Identify the reciter from audio
+                - **Guess Surah**  - Identify which Surah the ayat is from
+                - **Guess Meaning**  - Translate or explain the ayat
+                - **Guess Next Ayat**  - Recite the next ayat in sequence
+                - **Guess Previous Ayat**  - Recite the previous ayat in sequence
+                - **Guess Reciter**  - Identify the reciter from audio
 
                 ## WebSocket Endpoints
                 - **Connect**: `ws://localhost:8080/ws`

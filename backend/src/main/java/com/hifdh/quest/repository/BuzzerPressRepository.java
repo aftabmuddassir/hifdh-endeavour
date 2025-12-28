@@ -37,10 +37,14 @@ public interface BuzzerPressRepository extends JpaRepository<BuzzerPress, Long> 
     long countByParticipantIdAndRoundId(Long participantId, Long roundId);
 
     /**
-     * Get the next available buzz rank for a round.
+     * Get the next available buzz rank for a round (ATOMIC operation).
+     *
+     * This query executes atomically in the database, preventing race conditions
+     * where multiple players buzz at the exact same time. Combined with the
+     * unique constraint on (round_id, buzz_rank), this ensures sequential ranking.
      *
      * @param roundId Round ID
-     * @return Next buzz rank number
+     * @return Next buzz rank number (1, 2, 3, etc.)
      */
     @Query("SELECT COALESCE(MAX(bp.buzzRank), 0) + 1 FROM BuzzerPress bp WHERE bp.round.id = :roundId")
     Integer getNextBuzzRank(Long roundId);
