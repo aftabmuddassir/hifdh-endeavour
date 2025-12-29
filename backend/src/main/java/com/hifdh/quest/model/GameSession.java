@@ -25,11 +25,17 @@ public class GameSession {
     @Column(name = "admin_id")
     private Long adminId;
 
-    @Column(name = "surah_range_start", nullable = false)
+    @Column(name = "surah_range_start")
     private Integer surahRangeStart;
 
-    @Column(name = "surah_range_end", nullable = false)
+    @Column(name = "surah_range_end")
     private Integer surahRangeEnd;
+
+    @Column(name = "from_ayat")
+    private Integer fromAyat;
+
+    @Column(name = "to_ayat")
+    private Integer toAyat;
 
     @Column(name = "juz_number")
     private Integer juzNumber;

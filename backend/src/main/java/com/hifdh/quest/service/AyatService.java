@@ -34,6 +34,22 @@ public class AyatService {
      * @return Random Ayat or null if none available
      */
     public Ayat getRandomAyatBySurahRange(Integer surahStart, Integer surahEnd, Set<Long> usedAyatIds) {
+        return getRandomAyatBySurahRange(surahStart, surahEnd, null, null, usedAyatIds);
+    }
+
+    /**
+     * Get a random Ayat from specified Surah and Ayat range, excluding previously used ones.
+     *
+     * @param surahStart Starting Surah number (1-114)
+     * @param surahEnd Ending Surah number (1-114)
+     * @param fromAyat Optional starting Ayat number within start surah
+     * @param toAyat Optional ending Ayat number within end surah
+     * @param usedAyatIds Set of Ayat IDs to exclude
+     * @return Random Ayat or null if none available
+     */
+    public Ayat getRandomAyatBySurahRange(Integer surahStart, Integer surahEnd,
+                                          Integer fromAyat, Integer toAyat,
+                                          Set<Long> usedAyatIds) {
         if (usedAyatIds == null) {
             usedAyatIds = Collections.emptySet();
         }
@@ -42,17 +58,46 @@ public class AyatService {
             surahStart, surahEnd, usedAyatIds
         );
 
+        // Apply ayat-level filtering if specified
+        if (fromAyat != null || toAyat != null) {
+            availableAyat = availableAyat.stream()
+                .filter(ayat -> {
+                    Integer surahNum = ayat.getSurahNumber();
+                    Integer ayatNum = ayat.getAyatNumber();
+
+                    // For start surah: filter by fromAyat
+                    if (surahNum.equals(surahStart) && fromAyat != null) {
+                        if (ayatNum < fromAyat) {
+                            return false;
+                        }
+                    }
+
+                    // For end surah: filter by toAyat
+                    if (surahNum.equals(surahEnd) && toAyat != null) {
+                        if (ayatNum > toAyat) {
+                            return false;
+                        }
+                    }
+
+                    return true;
+                })
+                .toList();
+        }
+
         if (availableAyat.isEmpty()) {
-            log.warn("No available Ayat in range {}-{} excluding {} used verses",
-                surahStart, surahEnd, usedAyatIds.size());
+            log.warn("No available Ayat in range {}-{} (ayat {}-{}) excluding {} used verses",
+                surahStart, surahEnd, fromAyat != null ? fromAyat : "all",
+                toAyat != null ? toAyat : "all", usedAyatIds.size());
             return null;
         }
 
         int randomIndex = random.nextInt(availableAyat.size());
         Ayat selectedAyat = availableAyat.get(randomIndex);
 
-        log.debug("Selected Ayat {}/{} from range {}-{}",
-            selectedAyat.getSurahNumber(), selectedAyat.getAyatNumber(), surahStart, surahEnd);
+        log.debug("Selected Ayat {}/{} from range {}-{} (ayat {}-{})",
+            selectedAyat.getSurahNumber(), selectedAyat.getAyatNumber(),
+            surahStart, surahEnd, fromAyat != null ? fromAyat : "all",
+            toAyat != null ? toAyat : "all");
 
         return selectedAyat;
     }

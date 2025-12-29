@@ -11,8 +11,10 @@ export default function GameSetup() {
   const [difficulty, setDifficulty] = useState<Difficulty>('medium');
   const [gameMode, setGameMode] = useState<GameMode>('individual');
   const [rangeType, setRangeType] = useState<'surah' | 'juz'>('surah');
-  const [surahStart, setSurahStart] = useState(1);
+  const [surahStart, setSurahStart] = useState(90);
   const [surahEnd, setSurahEnd] = useState(114);
+  const [fromAyat, setFromAyat] = useState<number | undefined>();
+  const [toAyat, setToAyat] = useState<number | undefined>();
   const [juzNumber, setJuzNumber] = useState(1);
   const [selectedReciterId, setSelectedReciterId] = useState<number | undefined>();
   const [scoreboardLimit, setScoreboardLimit] = useState(5);
@@ -55,6 +57,8 @@ export default function GameSetup() {
     if (rangeType === 'surah') {
       request.surahRangeStart = surahStart;
       request.surahRangeEnd = surahEnd;
+      request.fromAyat = fromAyat;
+      request.toAyat = toAyat;
     } else {
       request.juzNumber = juzNumber;
     }
@@ -190,35 +194,16 @@ export default function GameSetup() {
               <label className="block text-lg font-bold text-transparent bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text mb-4">
                 🎮 GAME MODE
               </label>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="max-w-md">
                 <button
                   type="button"
                   onClick={() => setGameMode('individual')}
-                  className={`p-6 rounded-xl border-2 transition-all transform hover:scale-105 ${
-                    gameMode === 'individual'
-                      ? 'border-transparent bg-gradient-to-br from-blue-500 to-cyan-600 text-white shadow-lg shadow-blue-500/50'
-                      : 'border-gray-600 bg-gray-700/50 text-gray-300 hover:border-gray-500'
-                  }`}
+                  className="w-full p-6 rounded-xl border-2 border-transparent bg-gradient-to-br from-blue-500 to-cyan-600 text-white shadow-lg shadow-blue-500/50"
                 >
                   <div className="flex flex-col items-center gap-2">
                     <User className="w-6 h-6" />
                     <div className="font-bold text-lg">Individual</div>
                     <div className="text-sm opacity-90">Solo Competition</div>
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setGameMode('team')}
-                  className={`p-6 rounded-xl border-2 transition-all transform hover:scale-105 ${
-                    gameMode === 'team'
-                      ? 'border-transparent bg-gradient-to-br from-purple-500 to-pink-600 text-white shadow-lg shadow-purple-500/50'
-                      : 'border-gray-600 bg-gray-700/50 text-gray-300 hover:border-gray-500'
-                  }`}
-                >
-                  <div className="flex flex-col items-center gap-2">
-                    <Users className="w-6 h-6" />
-                    <div className="font-bold text-lg">Team</div>
-                    <div className="text-sm opacity-90">Collaborate Together</div>
                   </div>
                 </button>
               </div>
@@ -301,29 +286,58 @@ export default function GameSetup() {
 
               {/* Surah Range Inputs */}
               {rangeType === 'surah' && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-cyan-300 mb-2">Start Surah</label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="114"
-                      value={surahStart}
-                      onChange={(e) => setSurahStart(parseInt(e.target.value))}
-                      className="w-full px-4 py-3 bg-gray-700/70 border-2 border-gray-600 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-all placeholder-gray-400"
-                    />
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-cyan-300 mb-2">Start Surah</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="114"
+                        value={surahStart}
+                        onChange={(e) => setSurahStart(parseInt(e.target.value))}
+                        className="w-full px-4 py-3 bg-gray-700/70 border-2 border-gray-600 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-all placeholder-gray-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-cyan-300 mb-2">End Surah</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="114"
+                        value={surahEnd}
+                        onChange={(e) => setSurahEnd(parseInt(e.target.value))}
+                        className="w-full px-4 py-3 bg-gray-700/70 border-2 border-gray-600 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-all placeholder-gray-400"
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-cyan-300 mb-2">End Surah</label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="114"
-                      value={surahEnd}
-                      onChange={(e) => setSurahEnd(parseInt(e.target.value))}
-                      className="w-full px-4 py-3 bg-gray-700/70 border-2 border-gray-600 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-all placeholder-gray-400"
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-cyan-300 mb-2">From Ayah (Optional)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={fromAyat || ''}
+                        onChange={(e) => setFromAyat(e.target.value ? parseInt(e.target.value) : undefined)}
+                        placeholder="First ayah of start surah"
+                        className="w-full px-4 py-3 bg-gray-700/70 border-2 border-gray-600 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-all placeholder-gray-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-cyan-300 mb-2">To Ayah (Optional)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={toAyat || ''}
+                        onChange={(e) => setToAyat(e.target.value ? parseInt(e.target.value) : undefined)}
+                        placeholder="Last ayah of end surah"
+                        className="w-full px-4 py-3 bg-gray-700/70 border-2 border-gray-600 text-white rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-all placeholder-gray-400"
+                      />
+                    </div>
                   </div>
+                  <p className="text-xs text-gray-400 italic">
+                    📌 Optional: Specify exact ayah range within the selected surahs
+                  </p>
                 </div>
               )}
 

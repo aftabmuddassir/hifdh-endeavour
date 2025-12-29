@@ -35,7 +35,7 @@ public class AyatController {
      */
     @GetMapping("/random")
     public ResponseEntity<AyatDTO> getRandomAyat(
-            @RequestParam(required = false, defaultValue = "1") Integer surahStart,
+            @RequestParam(required = false, defaultValue = "90") Integer surahStart,
             @RequestParam(required = false, defaultValue = "114") Integer surahEnd,
             @RequestParam(required = false) Long reciterId
     ) {

@@ -41,6 +41,8 @@ export interface CreateGameRequest {
   adminId?: number;
   surahRangeStart?: number;
   surahRangeEnd?: number;
+  fromAyat?: number; // Optional: Starting ayah within start surah
+  toAyat?: number; // Optional: Ending ayah within end surah
   juzNumber?: number;
   difficulty: Difficulty;
   gameMode: GameMode;

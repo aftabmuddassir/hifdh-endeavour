@@ -34,6 +34,7 @@ public class GameSessionService {
     private final AyatService ayatService;
     private final SimpMessagingTemplate messagingTemplate;
     private final BuzzerService buzzerService;
+    private final SurahRepository surahRepository;
 
     // Constructor with @Lazy to break circular dependency with BuzzerService
     public GameSessionService(
@@ -44,7 +45,8 @@ public class GameSessionService {
         AyatRepository ayatRepository,
         AyatService ayatService,
         SimpMessagingTemplate messagingTemplate,
-        @Lazy BuzzerService buzzerService
+        @Lazy BuzzerService buzzerService,
+        SurahRepository surahRepository
     ) {
         this.sessionRepository = sessionRepository;
         this.participantRepository = participantRepository;
@@ -54,6 +56,7 @@ public class GameSessionService {
         this.ayatService = ayatService;
         this.messagingTemplate = messagingTemplate;
         this.buzzerService = buzzerService;
+        this.surahRepository = surahRepository;
     }
 
     // Question types with their points
@@ -90,6 +93,8 @@ public class GameSessionService {
         session.setAdminId(request.getAdminId());
         session.setSurahRangeStart(request.getSurahRangeStart());
         session.setSurahRangeEnd(request.getSurahRangeEnd());
+        session.setFromAyat(request.getFromAyat());
+        session.setToAyat(request.getToAyat());
         session.setJuzNumber(request.getJuzNumber());
         session.setDifficulty(request.getDifficulty());
         session.setTimerSeconds(DIFFICULTY_TIMERS.get(request.getDifficulty().toLowerCase()));
@@ -310,6 +315,8 @@ public class GameSessionService {
             ayat = ayatService.getRandomAyatBySurahRange(
                 session.getSurahRangeStart(),
                 session.getSurahRangeEnd(),
+                session.getFromAyat(),
+                session.getToAyat(),
                 usedAyatIds
             );
         }
@@ -562,6 +569,59 @@ public class GameSessionService {
 
         if (hasSurahRange && !ayatService.isValidSurahRange(request.getSurahRangeStart(), request.getSurahRangeEnd())) {
             throw new IllegalArgumentException("Invalid Surah range");
+        }
+
+        // Validate ayat range if specified
+        if (hasSurahRange && (request.getFromAyat() != null || request.getToAyat() != null)) {
+            Integer fromAyat = request.getFromAyat();
+            Integer toAyat = request.getToAyat();
+            Integer startSurah = request.getSurahRangeStart();
+            Integer endSurah = request.getSurahRangeEnd();
+
+            // Validate fromAyat
+            if (fromAyat != null) {
+                if (fromAyat < 1) {
+                    throw new IllegalArgumentException("fromAyat must be at least 1");
+                }
+
+                // Get total ayat for start surah
+                Surah startSurahData = surahRepository.findById(startSurah)
+                    .orElseThrow(() -> new IllegalArgumentException("Surah " + startSurah + " not found"));
+
+                if (fromAyat > startSurahData.getTotalAyat()) {
+                    throw new IllegalArgumentException(
+                        String.format("fromAyat (%d) exceeds total ayat (%d) in Surah %d (%s)",
+                            fromAyat, startSurahData.getTotalAyat(), startSurah, startSurahData.getNameEnglish())
+                    );
+                }
+            }
+
+            // Validate toAyat
+            if (toAyat != null) {
+                if (toAyat < 1) {
+                    throw new IllegalArgumentException("toAyat must be at least 1");
+                }
+
+                // Get total ayat for end surah
+                Surah endSurahData = surahRepository.findById(endSurah)
+                    .orElseThrow(() -> new IllegalArgumentException("Surah " + endSurah + " not found"));
+
+                if (toAyat > endSurahData.getTotalAyat()) {
+                    throw new IllegalArgumentException(
+                        String.format("toAyat (%d) exceeds total ayat (%d) in Surah %d (%s)",
+                            toAyat, endSurahData.getTotalAyat(), endSurah, endSurahData.getNameEnglish())
+                    );
+                }
+            }
+
+            // If both are specified and start/end surah are the same, ensure fromAyat <= toAyat
+            if (fromAyat != null && toAyat != null && startSurah.equals(endSurah)) {
+                if (fromAyat > toAyat) {
+                    throw new IllegalArgumentException(
+                        String.format("fromAyat (%d) cannot be greater than toAyat (%d)", fromAyat, toAyat)
+                    );
+                }
+            }
         }
 
         if (hasJuz && !ayatService.isValidJuz(request.getJuzNumber())) {

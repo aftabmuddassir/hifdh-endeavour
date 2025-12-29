@@ -19,6 +19,8 @@ public class CreateGameRequest {
     private Long adminId;
     private Integer surahRangeStart;
     private Integer surahRangeEnd;
+    private Integer fromAyat; // Optional: Starting ayah within start surah
+    private Integer toAyat; // Optional: Ending ayah within end surah
     private Integer juzNumber;
     private String difficulty; // 'easy' (90s), 'medium' (60s), 'hard' (30s)
     private String gameMode; // 'team', 'individual'
