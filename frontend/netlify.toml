@@ -1,0 +1,33 @@
+# Netlify configuration for Hifdh Quest frontend
+[build]
+  # Build command
+  command = "npm run build"
+
+  # Directory to deploy (Vite builds to 'dist' by default)
+  publish = "dist"
+
+  # Environment variables for build (you'll also set these in Netlify dashboard)
+  [build.environment]
+    NODE_VERSION = "18"
+
+# Redirect rules for SPA (Single Page Application)
+# This ensures all routes work correctly with React Router
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Headers for security and performance
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# Cache static assets
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
