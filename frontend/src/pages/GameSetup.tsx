@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { apiService } from '../services/api.service';
 import type { CreateGameRequest, Difficulty, GameMode, Reciter, QuestionType } from '../types/game';
 import { Zap, User, BookOpen, Sparkles, Trophy } from 'lucide-react';
+import { analytics } from '../utils/analytics';
 
 export default function GameSetup() {
   const navigate = useNavigate();
@@ -68,6 +69,9 @@ export default function GameSetup() {
     try {
       const gameSession = await apiService.createGame(request);
       console.log('Game created:', gameSession);
+
+      // Track game creation in analytics
+      analytics.gameCreated(difficulty, gameMode, selectedQuestionType);
 
       // Navigate to admin screen (creator has admin controls)
       navigate(`/admin/${gameSession.id}`);
