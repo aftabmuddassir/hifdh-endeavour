@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiService } from '../services/api.service';
 import type { CreateGameRequest, Difficulty, GameMode, Reciter, QuestionType } from '../types/game';
-import { Zap, Users, User, BookOpen, Sparkles, Trophy } from 'lucide-react';
+import { Zap, User, BookOpen, Sparkles, Trophy } from 'lucide-react';
 
 export default function GameSetup() {
   const navigate = useNavigate();
