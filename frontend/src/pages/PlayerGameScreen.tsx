@@ -572,7 +572,7 @@ export default function PlayerGameScreen({
         )}
 
         {/* Active Game UI */}
-        {gameSession.status === 'active' && (
+        {gameSession.status === 'active' && !gameEnded && (
           <>
             {/* Waiting for Round */}
             {!currentRound && (
