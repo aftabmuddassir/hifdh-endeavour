@@ -304,7 +304,7 @@ export default function PlayerGameScreen({
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-16 h-16 text-cyan-500 animate-spin mx-auto mb-4" />
           <p className="text-cyan-300 text-xl font-semibold">Loading game...</p>
@@ -316,7 +316,7 @@ export default function PlayerGameScreen({
   // Error state
   if (error || !gameSession) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 flex items-center justify-center px-4">
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center px-4">
         <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl shadow-2xl p-8 max-w-md border-2 border-red-500/30">
           <h2 className="text-3xl font-bold text-transparent bg-gradient-to-r from-red-400 to-red-600 bg-clip-text mb-4">
             ⚠️ Error
@@ -345,7 +345,7 @@ export default function PlayerGameScreen({
   }));
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 py-4 px-4">
+    <div className="min-h-screen bg-gray-900 py-4 px-4">
       <div className="max-w-4xl mx-auto space-y-4">
         {/* Header - Player Info */}
         <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl shadow-2xl p-4 border-2 border-purple-500/30">

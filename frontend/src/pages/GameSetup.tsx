@@ -138,26 +138,20 @@ export default function GameSetup() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 py-12 px-4">
+    <div className="min-h-screen bg-gray-900 py-12 px-4">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-8 animate-fade-in">
-          <div className="inline-block mb-4">
-            <div className="bg-gradient-to-r from-green-400 via-blue-500 to-purple-600 p-1 rounded-2xl">
-              <div className="bg-gray-900 px-8 py-4 rounded-xl">
-                <h1 className="text-5xl font-bold bg-gradient-to-r from-green-400 via-blue-500 to-purple-600 bg-clip-text text-transparent">
-                  ⚡ Hifdh Quest ⚡
-                </h1>
-              </div>
-            </div>
-          </div>
-          <p className="text-cyan-300 text-xl font-semibold animate-pulse">
-            🎮 Create Your Game Session 🎮
+        <div className="text-center mb-8">
+          <h1 className="text-5xl font-bold text-green-500 mb-4">
+            Hifdh Quest
+          </h1>
+          <p className="text-gray-300 text-xl font-semibold">
+            Create Your Game Session
           </p>
         </div>
 
         {/* Form Card */}
-        <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl shadow-2xl p-8 border-2 border-purple-500/30">
+        <div className="bg-gray-800 rounded-2xl shadow-2xl p-8 border-2 border-gray-700">
           <form onSubmit={handleSubmit} className="space-y-8">
             {/* Error Alert */}
             {error && (
@@ -168,8 +162,8 @@ export default function GameSetup() {
 
             {/* Difficulty Selection */}
             <div>
-              <label className="block text-lg font-bold text-transparent bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text mb-4">
-                🎯 DIFFICULTY LEVEL
+              <label className="block text-lg font-bold text-cyan-400 mb-4">
+                DIFFICULTY LEVEL
               </label>
               <div className="grid grid-cols-3 gap-4">
                 {Object.entries(difficultyConfig).map(([key, config]) => (
@@ -179,7 +173,7 @@ export default function GameSetup() {
                     onClick={() => setDifficulty(key as Difficulty)}
                     className={`p-6 rounded-xl border-2 transition-all transform hover:scale-105 ${
                       difficulty === key
-                        ? `border-transparent bg-gradient-to-br ${config.color} text-white shadow-lg shadow-${key === 'easy' ? 'green' : key === 'medium' ? 'yellow' : 'red'}-500/50`
+                        ? `border-transparent ${key === 'easy' ? 'bg-green-600' : key === 'medium' ? 'bg-yellow-600' : 'bg-red-600'} text-white shadow-lg`
                         : 'border-gray-600 bg-gray-700/50 text-gray-300 hover:border-gray-500'
                     }`}
                   >
@@ -195,14 +189,14 @@ export default function GameSetup() {
 
             {/* Game Mode Selection */}
             <div>
-              <label className="block text-lg font-bold text-transparent bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text mb-4">
-                🎮 GAME MODE
+              <label className="block text-lg font-bold text-cyan-400 mb-4">
+                GAME MODE
               </label>
               <div className="max-w-md">
                 <button
                   type="button"
                   onClick={() => setGameMode('individual')}
-                  className="w-full p-6 rounded-xl border-2 border-transparent bg-gradient-to-br from-blue-500 to-cyan-600 text-white shadow-lg shadow-blue-500/50"
+                  className="w-full p-6 rounded-xl border-2 border-transparent bg-blue-600 text-white shadow-lg"
                 >
                   <div className="flex flex-col items-center gap-2">
                     <User className="w-6 h-6" />
@@ -215,8 +209,8 @@ export default function GameSetup() {
 
             {/* Question Type Selection */}
             <div>
-              <label className="block text-lg font-bold text-transparent bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text mb-4">
-                ❓ QUESTION TYPE
+              <label className="block text-lg font-bold text-cyan-400 mb-4">
+                QUESTION TYPE
               </label>
               <p className="text-sm text-gray-400 mb-4">Select ONE question type for this game</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -231,17 +225,17 @@ export default function GameSetup() {
                         onClick={() => setSelectedQuestionType(questionType)}
                         className={`p-6 rounded-xl border-2 transition-all transform hover:scale-105 ${
                           isSelected
-                            ? `border-transparent bg-gradient-to-br ${config.color} text-white shadow-lg`
+                            ? `border-transparent bg-purple-600 text-white shadow-lg`
                             : 'border-gray-600 bg-gray-700/50 text-gray-300 hover:border-gray-500'
                         }`}
                       >
                         <div className="flex flex-col items-center gap-2">
                           <span className="text-4xl">{config.emoji}</span>
                           <div className="font-bold text-base">{config.label}</div>
-                          <div className="text-sm opacity-90">{config.points} points</div>
+
                           {isSelected && (
                             <div className="text-xs font-semibold bg-white/20 px-3 py-1 rounded-full">
-                              ✓ Selected
+                                ✓ Selected
                             </div>
                           )}
                         </div>
@@ -254,8 +248,8 @@ export default function GameSetup() {
 
             {/* Range Type Selection */}
             <div>
-              <label className="block text-lg font-bold text-transparent bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text mb-4">
-                📖 VERSE SELECTION
+              <label className="block text-lg font-bold text-cyan-400 mb-4">
+                VERSE SELECTION
               </label>
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <button
@@ -263,7 +257,7 @@ export default function GameSetup() {
                   onClick={() => setRangeType('surah')}
                   className={`p-4 rounded-xl border-2 transition-all transform hover:scale-105 ${
                     rangeType === 'surah'
-                      ? 'border-transparent bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/50'
+                      ? 'border-transparent bg-indigo-600 text-white shadow-lg'
                       : 'border-gray-600 bg-gray-700/50 text-gray-300 hover:border-gray-500'
                   }`}
                 >
@@ -277,7 +271,7 @@ export default function GameSetup() {
                   onClick={() => setRangeType('juz')}
                   className={`p-4 rounded-xl border-2 transition-all transform hover:scale-105 ${
                     rangeType === 'juz'
-                      ? 'border-transparent bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/50'
+                      ? 'border-transparent bg-indigo-600 text-white shadow-lg'
                       : 'border-gray-600 bg-gray-700/50 text-gray-300 hover:border-gray-500'
                   }`}
                 >
@@ -364,8 +358,8 @@ export default function GameSetup() {
             {/* Reciter Selection */}
             {reciters.length > 0 && (
               <div>
-                <label className="block text-lg font-bold text-transparent bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text mb-4">
-                  🎙️ RECITER
+                <label className="block text-lg font-bold text-cyan-400 mb-4">
+                  RECITER
                 </label>
                 <select
                   value={selectedReciterId}
@@ -383,8 +377,8 @@ export default function GameSetup() {
 
             {/* Scoreboard Limit */}
             <div>
-              <label className="block text-lg font-bold text-transparent bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text mb-4">
-                🏆 SCOREBOARD LIMIT
+              <label className="block text-lg font-bold text-cyan-400 mb-4">
+                SCOREBOARD LIMIT
               </label>
               <input
                 type="number"
@@ -401,7 +395,7 @@ export default function GameSetup() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-5 bg-gradient-to-r from-green-500 via-emerald-500 to-cyan-500 text-white font-bold text-xl rounded-xl hover:from-green-600 hover:via-emerald-600 hover:to-cyan-600 transition-all transform hover:scale-105 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed disabled:transform-none shadow-2xl shadow-green-500/50 hover:shadow-green-400/60"
+              className="w-full py-5 bg-green-600 hover:bg-green-700 text-white font-bold text-xl rounded-xl transition-all transform hover:scale-105 disabled:bg-gray-600 disabled:cursor-not-allowed disabled:transform-none shadow-2xl"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-3">
@@ -410,7 +404,7 @@ export default function GameSetup() {
                 </span>
               ) : (
                 <span className="flex items-center justify-center gap-2">
-                  🚀 START HIFDH QUEST 🚀
+                   START HIFDH QUEST 
                 </span>
               )}
             </button>

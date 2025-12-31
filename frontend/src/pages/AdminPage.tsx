@@ -324,20 +324,20 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 py-8 px-4">
+    <div className="min-h-screen bg-gray-900 py-8 px-4">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl shadow-2xl p-6 mb-6 border-2 border-yellow-500/50">
+        <div className="bg-gray-800 rounded-2xl shadow-2xl p-6 mb-6 border-2 border-yellow-500/50">
           <div className="flex items-center gap-3 mb-4">
             <Crown className="w-8 h-8 text-yellow-400" />
-            <h1 className="text-3xl font-bold text-transparent bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text">
-              🎮 ADMIN CONTROL PANEL
+            <h1 className="text-3xl font-bold text-yellow-400">
+              ADMIN CONTROL PANEL
             </h1>
           </div>
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
-              <h2 className="text-2xl font-bold bg-gradient-to-r from-green-400 via-blue-500 to-purple-600 bg-clip-text text-transparent">
-                ⚡ Hifdh Quest ⚡
+              <h2 className="text-2xl font-bold text-green-500">
+                Hifdh Quest
               </h2>
               <p className="text-cyan-300 mt-2 text-sm font-medium">
                 Session: <span className="font-mono text-cyan-400">{gameSession.id.substring(0, 8)}...</span>
@@ -347,10 +347,10 @@ export default function AdminPage() {
               <div className="text-right">
                 <div className={`inline-block px-4 py-2 rounded-lg font-bold ${
                   gameSession.status === 'setup'
-                    ? 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white'
+                    ? 'bg-yellow-600 text-white'
                     : gameSession.status === 'active'
-                    ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white'
-                    : 'bg-gradient-to-r from-gray-500 to-gray-600 text-white'
+                    ? 'bg-green-600 text-white'
+                    : 'bg-gray-600 text-white'
                 }`}>
                   {gameSession.status === 'setup' ? '⏳ WAITING' : gameSession.status === 'active' ? '🎮 LIVE' : '✅ ENDED'}
                 </div>

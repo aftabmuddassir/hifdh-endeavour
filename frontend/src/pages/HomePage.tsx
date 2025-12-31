@@ -7,7 +7,7 @@ export default function HomePage() {
       <div className="max-w-4xl w-full space-y-8">
         {/* Header */}
         <div className="text-center space-y-4">
-          <h1 className="text-6xl font-bold bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-transparent">
+          <h1 className="text-6xl font-bold text-green-500">
             Hifdh Quest
           </h1>
           <p className="text-2xl text-gray-300">
@@ -46,18 +46,12 @@ export default function HomePage() {
         </div>
 
         {/* CTA Buttons */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-center mt-12">
+        <div className="flex justify-center mt-12">
           <Link
             to="/setup"
             className="px-8 py-4 bg-green-600 hover:bg-green-700 rounded-lg text-lg font-semibold transition"
           >
             Create New Game
-          </Link>
-          <Link
-            to="/test"
-            className="px-8 py-4 bg-gray-700 hover:bg-gray-600 rounded-lg text-lg font-semibold transition"
-          >
-            Test WebSocket
           </Link>
         </div>
 
