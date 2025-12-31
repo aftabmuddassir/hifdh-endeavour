@@ -78,6 +78,25 @@ export interface RoundEndedEvent extends GameEvent {
   roundId: string;
 }
 
+export interface GameEndedEvent extends GameEvent {
+  type: 'GAME_ENDED';
+  reason: string;
+  totalRoundsPlayed: number;
+  finalScores: FinalScore[];
+  winnerId: number | null;
+  winnerName: string | null;
+}
+
+export interface FinalScore {
+  participantId: number;
+  participantName: string;
+  totalScore: number;
+  rank: number;
+  roundsWon: number;
+  totalBuzzes: number;
+  correctAnswers: number;
+}
+
 export interface PlayerWebSocketCallbacks {
   onRoundStarted?: (event: RoundStartedEvent) => void;
   onBuzzerPressed?: (event: BuzzerPressedEvent) => void;
@@ -85,6 +104,7 @@ export interface PlayerWebSocketCallbacks {
   onAnswerValidated?: (event: AnswerValidatedEvent) => void;
   onScoreboardUpdate?: (event: ScoreboardUpdateEvent) => void;
   onRoundEnded?: (event: RoundEndedEvent) => void;
+  onGameEnded?: (event: GameEndedEvent) => void;
   onError?: (error: string) => void;
 }
 
@@ -206,6 +226,9 @@ export function usePlayerWebSocket(
                 break;
               case 'ROUND_ENDED':
                 callbacks.onRoundEnded?.(event as RoundEndedEvent);
+                break;
+              case 'GAME_ENDED':
+                callbacks.onGameEnded?.(event as GameEndedEvent);
                 break;
             }
           } catch (error) {

@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { apiService } from '../services/api.service';
 import { wsService } from '../services/websocket.service';
 import type { GameSession } from '../types/game';
-import { Trophy, Users, LogOut, Loader2, Wifi, WifiOff } from 'lucide-react';
+import { Trophy, Users, LogOut, Loader2, Wifi, WifiOff, Crown } from 'lucide-react';
 
 // Hooks
 import {
@@ -12,6 +12,8 @@ import {
   type TimerStoppedEvent,
   type AnswerValidatedEvent,
   type RoundEndedEvent,
+  type GameEndedEvent,
+  type FinalScore,
 } from '../hooks/usePlayerWebSocket';
 import { useTimerSync } from '../hooks/useTimerSync';
 
@@ -46,6 +48,11 @@ export default function PlayerGameScreen({
   const [myBuzzRank, setMyBuzzRank] = useState<number | null>(null);
   const [_buzzElapsedTime, setBuzzElapsedTime] = useState(0);
 
+  // Game ended state
+  const [gameEnded, setGameEnded] = useState(false);
+  const [finalScores, setFinalScores] = useState<FinalScore[]>([]);
+  const [winnerName, setWinnerName] = useState<string | null>(null);
+
   // Feedback state
   const [feedbackType, setFeedbackType] = useState<FeedbackType | null>(null);
   const [feedbackMessage, setFeedbackMessage] = useState<string>('');
@@ -68,6 +75,7 @@ export default function PlayerGameScreen({
     onAnswerValidated: handleAnswerValidated,
     onScoreboardUpdate: handleScoreboardUpdate,
     onRoundEnded: handleRoundEnded,
+    onGameEnded: handleGameEnded,
     onError: (error) => {
       console.error('WebSocket error:', error);
       setError(error);
@@ -170,6 +178,27 @@ export default function PlayerGameScreen({
     closeFeedback();
 
     // Stop audio if playing
+    if (audioElement) {
+      audioElement.pause();
+      audioElement.currentTime = 0;
+      setIsAudioPlaying(false);
+    }
+  }
+
+  function handleGameEnded(event: GameEndedEvent) {
+    console.log('Game ended:', event);
+
+    // Set game ended state
+    setGameEnded(true);
+    setFinalScores(event.finalScores);
+    setWinnerName(event.winnerName);
+
+    // Stop timer and clear round
+    stopTimer();
+    setCurrentRound(null);
+    setBuzzerState('locked');
+
+    // Stop audio
     if (audioElement) {
       audioElement.pause();
       audioElement.currentTime = 0;
@@ -403,13 +432,142 @@ export default function PlayerGameScreen({
           </div>
         )}
 
-        {gameSession.status === 'completed' && (
-          <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl shadow-2xl p-8 text-center border-2 border-yellow-500/50">
-            <Trophy className="w-16 h-16 text-yellow-400 mx-auto mb-4" />
-            <h3 className="text-2xl font-bold text-yellow-400 mb-2">
-              🏆 Game Completed
-            </h3>
-            <p className="text-gray-400">Thanks for playing!</p>
+        {(gameSession.status === 'completed' || gameEnded) && (
+          <div className="space-y-6">
+            {/* Winner Announcement */}
+            <div className="bg-gradient-to-br from-yellow-600/20 to-orange-600/20 rounded-2xl shadow-2xl p-8 text-center border-2 border-yellow-500/50">
+              <Trophy className="w-20 h-20 text-yellow-400 mx-auto mb-4" />
+              <h3 className="text-3xl font-bold text-yellow-400 mb-2">
+                Game Completed!
+              </h3>
+              {winnerName && (
+                <p className="text-2xl text-gray-300 mt-4">
+                  Winner: <span className="text-yellow-400 font-bold">{winnerName}</span>
+                </p>
+              )}
+            </div>
+
+            {/* Final Leaderboard */}
+            <div className="bg-gray-800 rounded-2xl shadow-2xl p-6 border-2 border-purple-500/30">
+              <div className="flex items-center gap-3 mb-6">
+                <Trophy className="w-7 h-7 text-yellow-400" />
+                <h2 className="text-2xl font-bold text-yellow-400">Final Leaderboard</h2>
+              </div>
+
+              <div className="space-y-3">
+                {finalScores.length > 0 ? (
+                  finalScores.map((score, index) => (
+                    <div
+                      key={score.participantId}
+                      className={`rounded-xl p-5 border-2 transition-all ${
+                        score.participantId === participantId
+                          ? 'bg-cyan-500/20 border-cyan-500/50'
+                          : index === 0
+                          ? 'bg-yellow-500/20 border-yellow-500/50'
+                          : 'bg-gray-700/50 border-gray-600'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={`text-3xl font-bold ${
+                            index === 0 ? 'text-yellow-400' :
+                            index === 1 ? 'text-gray-300' :
+                            index === 2 ? 'text-orange-400' :
+                            'text-gray-400'
+                          }`}>
+                            #{score.rank}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-bold text-white text-lg">
+                                {score.participantName}
+                              </h3>
+                              {score.participantId === participantId && (
+                                <span className="text-xs px-2 py-1 bg-cyan-500/30 border border-cyan-500 text-cyan-300 rounded">
+                                  YOU
+                                </span>
+                              )}
+                              {index === 0 && (
+                                <Crown className="w-5 h-5 text-yellow-400" />
+                              )}
+                            </div>
+                            <div className="text-sm text-gray-400 mt-1">
+                              Buzzes: {score.totalBuzzes}
+                            </div>
+                          </div>
+                        </div>
+                        <div className={`text-4xl font-bold ${
+                          index === 0 ? 'text-yellow-400' : 'text-cyan-400'
+                        }`}>
+                          {score.totalScore}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  gameSession.participants
+                    .sort((a, b) => b.totalScore - a.totalScore)
+                    .map((participant, index) => (
+                      <div
+                        key={participant.id}
+                        className={`rounded-xl p-5 border-2 transition-all ${
+                          participant.id === participantId
+                            ? 'bg-cyan-500/20 border-cyan-500/50'
+                            : index === 0
+                            ? 'bg-yellow-500/20 border-yellow-500/50'
+                            : 'bg-gray-700/50 border-gray-600'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className={`text-3xl font-bold ${
+                              index === 0 ? 'text-yellow-400' :
+                              index === 1 ? 'text-gray-300' :
+                              index === 2 ? 'text-orange-400' :
+                              'text-gray-400'
+                            }`}>
+                              #{index + 1}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h3 className="font-bold text-white text-lg">
+                                  {participant.name}
+                                </h3>
+                                {participant.id === participantId && (
+                                  <span className="text-xs px-2 py-1 bg-cyan-500/30 border border-cyan-500 text-cyan-300 rounded">
+                                    YOU
+                                  </span>
+                                )}
+                                {index === 0 && (
+                                  <Trophy className="w-5 h-5 text-yellow-400" />
+                                )}
+                              </div>
+                              <div className="text-sm text-gray-400 mt-1">
+                                Buzzes: {participant.buzzerPressCount}
+                              </div>
+                            </div>
+                          </div>
+                          <div className={`text-4xl font-bold ${
+                            index === 0 ? 'text-yellow-400' : 'text-cyan-400'
+                          }`}>
+                            {participant.totalScore}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                )}
+              </div>
+            </div>
+
+            {/* Leave Game Button */}
+            <div className="text-center">
+              <button
+                onClick={onLeave}
+                className="px-8 py-4 bg-gray-700 hover:bg-gray-600 text-white font-bold rounded-lg transition-all"
+              >
+                Leave Game
+              </button>
+            </div>
           </div>
         )}
 

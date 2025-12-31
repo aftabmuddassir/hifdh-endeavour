@@ -463,6 +463,49 @@ public class GameSessionService {
 
         log.info("Ended game session {}", sessionId);
 
+        // Broadcast GAME_ENDED event to all players
+        List<GameParticipant> participants = participantRepository.findBySessionIdOrderByTotalScoreDesc(session.getId());
+
+        // Calculate final scores and rankings
+        List<GameEndedEvent.FinalScore> finalScores = participants.stream()
+            .sorted((a, b) -> Integer.compare(b.getTotalScore(), a.getTotalScore()))
+            .map(p -> {
+                int rank = participants.stream()
+                    .filter(other -> other.getTotalScore() > p.getTotalScore())
+                    .toArray().length + 1;
+
+                return GameEndedEvent.FinalScore.builder()
+                    .participantId(p.getId())
+                    .participantName(p.getName())
+                    .totalScore(p.getTotalScore())
+                    .rank(rank)
+                    .roundsWon(0) // TODO: Track rounds won
+                    .totalBuzzes(p.getBuzzerPressCount())
+                    .correctAnswers(0) // TODO: Track correct answers
+                    .build();
+            })
+            .collect(Collectors.toList());
+
+        // Get winner
+        GameParticipant winner = participants.stream()
+            .max(Comparator.comparing(GameParticipant::getTotalScore))
+            .orElse(null);
+
+        // Get total rounds played
+        int totalRoundsPlayed = (int) roundRepository.countBySessionId(sessionId);
+
+        GameEndedEvent event = GameEndedEvent.builder()
+            .sessionId(sessionId.toString())
+            .reason("ADMIN_ENDED")
+            .totalRoundsPlayed(totalRoundsPlayed)
+            .finalScores(finalScores)
+            .winnerId(winner != null ? winner.getId() : null)
+            .winnerName(winner != null ? winner.getName() : null)
+            .build();
+
+        messagingTemplate.convertAndSend("/topic/game/" + sessionId + "/events", event);
+        log.info("Broadcasted GAME_ENDED event to session {}", sessionId);
+
         return GameSessionDTO.fromEntity(session);
     }
 

@@ -1,9 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { apiService } from '../services/api.service';
 import { wsService } from '../services/websocket.service';
 import type { GameSession, GameRound } from '../types/game';
-import { Link, Copy, Check, Zap, Users, BookOpen, Trophy, Play, Crown, Volume2, StopCircle, PlayCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Link, Copy, Check, Zap, Users, BookOpen, Trophy, Play, Crown, Volume2, StopCircle, PlayCircle, ChevronLeft, ChevronRight, XCircle } from 'lucide-react';
 import { useAdminWebSocket } from '../hooks/useAdminWebSocket';
 import type {
   RoundStartedEvent,
@@ -14,10 +14,12 @@ import BuzzerQueue from '../components/admin/BuzzerQueue';
 
 export default function AdminPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
+  const navigate = useNavigate();
   const [gameSession, setGameSession] = useState<GameSession | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [showEndGameConfirm, setShowEndGameConfirm] = useState(false);
 
   // Round management state
   const [currentRound, setCurrentRound] = useState<GameRound | null>(null);
@@ -295,6 +297,19 @@ export default function AdminPage() {
     }
   };
 
+  const handleEndGame = async () => {
+    if (!sessionId) return;
+
+    try {
+      await apiService.endGame(sessionId);
+      // Navigate back to setup page
+      navigate('/setup');
+    } catch (err) {
+      console.error('Failed to end game:', err);
+      setError('Failed to end game. Please try again.');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 flex items-center justify-center">
@@ -325,6 +340,38 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-gray-900 py-8 px-4">
+      {/* End Game Confirmation Modal */}
+      {showEndGameConfirm && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-2xl shadow-2xl p-8 max-w-md border-2 border-red-500/50">
+            <div className="flex items-center gap-3 mb-6">
+              <XCircle className="w-8 h-8 text-red-400" />
+              <h2 className="text-2xl font-bold text-red-400">End Game?</h2>
+            </div>
+            <p className="text-gray-300 mb-6 text-lg">
+              Are you sure you want to end this game? This will end the game for all players and cannot be undone.
+            </p>
+            <div className="flex gap-4">
+              <button
+                onClick={() => setShowEndGameConfirm(false)}
+                className="flex-1 px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white font-bold rounded-lg transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setShowEndGameConfirm(false);
+                  handleEndGame();
+                }}
+                className="flex-1 px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition-all"
+              >
+                End Game
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="bg-gray-800 rounded-2xl shadow-2xl p-6 mb-6 border-2 border-yellow-500/50">
@@ -343,7 +390,7 @@ export default function AdminPage() {
                 Session: <span className="font-mono text-cyan-400">{gameSession.id.substring(0, 8)}...</span>
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap justify-end">
               <div className="text-right">
                 <div className={`inline-block px-4 py-2 rounded-lg font-bold ${
                   gameSession.status === 'setup'
@@ -354,10 +401,20 @@ export default function AdminPage() {
                 }`}>
                   {gameSession.status === 'setup' ? '⏳ WAITING' : gameSession.status === 'active' ? '🎮 LIVE' : '✅ ENDED'}
                 </div>
-                <div className="text-sm text-cyan-300 mt-2 font-semibold">
+                <div className="text-sm text-cyan-300 mt-2 font-semibold text-center">
                   Round {gameSession.currentRoundNumber}
                 </div>
               </div>
+              {/* End Game Button */}
+              <button
+                onClick={() => setShowEndGameConfirm(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition-all self-start"
+                title="End game for all players"
+              >
+                <XCircle className="w-5 h-5" />
+                <span className="hidden sm:inline">End Game</span>
+                <span className="sm:hidden">End</span>
+              </button>
             </div>
           </div>
 
